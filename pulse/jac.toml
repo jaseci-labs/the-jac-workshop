@@ -1,0 +1,20 @@
+[project]
+name = "pulse"
+kind = "app"
+
+# Python interop, the first-class way: import a lib DIRECTLY inside main.jac and
+# use it inline - one import, same file, no service, no glue. The demo uses the
+# stdlib `statistics` (ships everywhere, nothing to install). To use a
+# third-party lib instead, declare it here and it's the identical one-line
+# import in main.jac:
+#
+#   [dependencies.pip]
+#   pandas = ">=2.2"          # then: import from pandas { read_csv }
+#
+# (A separate analytics.py, like the capstone has, is the *other* thing: an
+# escape hatch for code already written in Python.)
+
+[plugins.byllm.model]
+# Matches the capstone so it works with the same byllm version. Swap for a
+# local model, or MockLLM, on airgapped / no-key workshop machines.
+default_model = "claude-sonnet-4-20250514"

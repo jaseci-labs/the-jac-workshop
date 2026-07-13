@@ -1,0 +1,11 @@
+[project]
+name = "metrics-workbench"
+kind = "app"
+
+[dependencies.pip]
+pandas = ">=2.2"
+statsmodels = ">=0.14"
+pyod = ">=2.0"
+
+[plugins.byllm.model]
+default_model = "claude-sonnet-4-20250514"
