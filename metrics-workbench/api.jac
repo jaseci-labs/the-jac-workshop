@@ -548,12 +548,15 @@ walker investigate {
 
 
 # ---------------------------------------------------------------------------
-# Web-facing walkers — called from the client dashboard via `root() spawn`.
+# Web-facing walkers — called from the client dashboard via `root spawn`.
+# `:protect` means JWT-authenticated + per-user: each caller runs on their OWN
+# root, so their Dataset/Metric/AnalysisRun/Insight graph is theirs alone
+# (only `:pub` skips auth; `:protect` also keeps them importable by the client).
 # They reuse the def:pub functions + analytics above, and report client-ready
 # dicts (the same shape the CLI prints).
 # ---------------------------------------------------------------------------
 
-walker:pub wb_seed {
+walker:protect wb_seed {
     can run with Root entry {
         existing = [-->][?:Dataset, name == "sales"];
         if not existing {
@@ -564,7 +567,7 @@ walker:pub wb_seed {
     }
 }
 
-walker:pub wb_dashboard {
+walker:protect wb_dashboard {
     has dataset: str = "sales";
     has metric: str = "revenue";
     can run with Root entry {
@@ -574,7 +577,7 @@ walker:pub wb_dashboard {
     }
 }
 
-walker:pub wb_narrate {
+walker:protect wb_narrate {
     has dataset: str = "sales";
     has metric: str = "revenue";
     can run with Root entry {
@@ -588,7 +591,7 @@ walker:pub wb_narrate {
     }
 }
 
-walker:pub wb_suggest {
+walker:protect wb_suggest {
     has dataset: str = "sales";
     can run with Root entry {
         ds = find_dataset(self.dataset);
@@ -602,7 +605,7 @@ walker:pub wb_suggest {
     }
 }
 
-walker:pub wb_runs {
+walker:protect wb_runs {
     has dataset: str = "sales";
     has metric: str = "revenue";
     can run with Root entry {

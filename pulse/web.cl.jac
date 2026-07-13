@@ -6,7 +6,8 @@ invokes them over the wire with no fetch/CORS glue. The chart is `recharts`
 """
 
 import from "recharts" { ResponsiveContainer, ComposedChart, Line, Scatter, XAxis, YAxis, CartesianGrid, Tooltip }
-import from "lucide-react" { Activity, Search, TrendingUp, Sparkles, TriangleAlert }
+import from "lucide-react" { Activity, Search, TrendingUp, Sparkles, TriangleAlert, LogOut }
+import from "@jac/runtime" { jacLogin, jacSignup, jacLogout, jacIsLoggedIn }
 
 sv import from api { dashboard, forecast, narrate }
 
@@ -20,10 +21,19 @@ glob CSS = """
   .stat:hover{border-color:#33405a;}
   .stat .v{font-size:1.7rem;font-weight:700;letter-spacing:-.02em;line-height:1;}
   .stat .l{font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:#5d6b80;margin-top:7px;font-family:ui-monospace,monospace;}
+  .pulse-in{width:100%;padding:11px 13px;border-radius:10px;border:1px solid #2b3444;background:#0c0f16;color:#e6edf3;font-size:.95rem;outline:none;transition:border-color .15s;}
+  .pulse-in:focus{border-color:#ff6a3d;}
+  .lnk{color:#ff6a3d;cursor:pointer;font-weight:600;}
 """;
 
 def:pub app -> JsxElement {
-    has points: list = [],
+    has authed: bool = jacIsLoggedIn(),
+        email: str = "",
+        password: str = "",
+        authmode: str = "login",
+        autherr: str = "",
+        authbusy: bool = False,
+        points: list = [],
         anomalies: list = [],
         slope: float = 0.0,
         intercept: float = 0.0,
@@ -33,15 +43,55 @@ def:pub app -> JsxElement {
         busy: bool = False;
 
     can with entry {
-        boot();
+        if authed {
+            boot();
+        }
     }
 
+    async def do_auth -> None;
     async def boot -> None;
     async def do_scan -> None;
     async def do_forecast -> None;
     async def do_narrate -> None;
     def chart_data -> list;
 
+    # ---- unauthenticated: login / sign-up gate ----
+    if not authed {
+        return
+            <div style={{
+                "minHeight": "100vh", "display": "grid", "placeItems": "center",
+                "background": "radial-gradient(120% 90% at 50% -10%, #131a26 0%, #0b0e14 55%)",
+                "color": "#e6edf3", "fontFamily": "system-ui, -apple-system, Segoe UI, sans-serif"
+            }}>
+                <style>{CSS}</style>
+                <div style={{"width": "360px", "maxWidth": "90vw", "background": "#11151d", "border": "1px solid #232a36", "borderRadius": "16px", "padding": "28px 26px"}}>
+                    <div style={{"display": "flex", "alignItems": "center", "gap": "11px", "marginBottom": "6px"}}>
+                        <div style={{"width": "38px", "height": "38px", "borderRadius": "11px", "display": "grid", "placeItems": "center", "background": "linear-gradient(135deg, rgba(255,106,61,.28), rgba(43,212,196,.14))", "border": "1px solid #2b3444"}}><Activity size={20} color="#ff6a3d"/></div>
+                        <div style={{"fontSize": "1.25rem", "fontWeight": "700"}}>Pulse</div>
+                    </div>
+                    <p style={{"color": "#93a0b4", "fontSize": ".88rem", "margin": "0 0 20px"}}>
+                        {"Sign in — your series live on your own graph." if authmode == "login" else "Create an account — you get your own isolated workspace."}
+                    </p>
+                    <div style={{"display": "flex", "flexDirection": "column", "gap": "11px"}}>
+                        <input className="pulse-in" type="email" placeholder="email" value={email}
+                            onChange={lambda e: ChangeEvent { email = e.target.value; }}/>
+                        <input className="pulse-in" type="password" placeholder="password" value={password}
+                            onChange={lambda e: ChangeEvent { password = e.target.value; }}
+                            onKeyDown={lambda e: KeyboardEvent { if e.key == "Enter" { do_auth(); } }}/>
+                        {autherr and <div style={{"color": "#ff5470", "fontSize": ".84rem"}}>{autherr}</div>}
+                        <button className="pulse-btn primary" disabled={authbusy} style={{"justifyContent": "center", "marginTop": "4px"}} onClick={lambda { do_auth(); }}>
+                            {"…" if authbusy else ("Sign in" if authmode == "login" else "Create account")}
+                        </button>
+                    </div>
+                    <div style={{"marginTop": "16px", "fontSize": ".86rem", "color": "#93a0b4", "textAlign": "center"}}>
+                        {(authmode == "login") and <span>No account? <span className="lnk" onClick={lambda { authmode = "signup"; autherr = ""; }}>Create one</span></span>}
+                        {(authmode == "signup") and <span>Have an account? <span className="lnk" onClick={lambda { authmode = "login"; autherr = ""; }}>Sign in</span></span>}
+                    </div>
+                </div>
+            </div>;
+    }
+
+    # ---- authenticated: the dashboard (runs on this user's own root) ----
     return
         <div style={{
             "minHeight": "100vh", "background": "radial-gradient(120% 90% at 50% -10%, #131a26 0%, #0b0e14 55%)",
@@ -56,12 +106,13 @@ def:pub app -> JsxElement {
                         "background": "linear-gradient(135deg, rgba(255,106,61,.25), rgba(43,212,196,.18))",
                         "border": "1px solid #2b3444"
                     }}><Activity size={22} color="#ff6a3d"/></div>
-                    <div>
+                    <div style={{"flex": "1"}}>
                         <div style={{"fontSize": "1.5rem", "fontWeight": "700", "letterSpacing": "-.02em", "lineHeight": "1"}}>Pulse</div>
                         <div style={{"color": "#8b95a5", "fontSize": ".9rem", "marginTop": "3px"}}>
                             Anomaly detection &amp; forecasting — the same Jac walkers as the CLI, in your browser.
                         </div>
                     </div>
+                    <button className="pulse-btn" onClick={lambda { jacLogout(); authed = False; }} style={{"padding": "8px 12px"}}><LogOut size={15}/> Sign out</button>
                 </div>
 
                 <div style={{"display": "flex", "gap": "14px", "marginTop": "26px"}}>
