@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Metrics Workbench — the Jac capstone</title>
+<meta name="description" content="The capstone of the Jac workshop: a real analytics workbench where pandas, pyod and statsmodels do the heavy lifting — anomaly detection, SARIMAX forecasting, and LLM-authored insight — all from one Jac source.">
+<meta property="og:title" content="Metrics Workbench — the Jac capstone">
+<meta property="og:description" content="pandas · pyod · statsmodels doing the numeric heavy lifting, one Jac source. Anomalies, forecasts, and AI insight in a full-stack app.">
+<meta property="og:image" content="assets/mw-hero.png">
+<style>
+  :root{
+    --bg:#0b0d13; --panel:#11141d; --panel-2:#161b26; --border:#232a36;
+    --text:#e6edf3; --muted:#93a0b4; --faint:#5d6b80;
+    --accent:#9d7bff; --accent-2:#2bd4c4; --danger:#ff5470; --ok:#3fb950; --wire:#3a4658;
+    --code:#0c0f18; --shadow:0 10px 40px -12px rgba(0,0,0,.6);
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+  code,pre{font-family:var(--mono)}
+  .wrap{max-width:940px;margin:0 auto;padding:0 20px}
+  h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
+  h2{font-size:1.7rem;margin:0 0 .3em}
+  .muted{color:var(--muted)}
+  .kbd{font-family:var(--mono);font-size:.85em;background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:.1em .45em}
+
+  header.nav{position:sticky;top:0;z-index:20;backdrop-filter:blur(10px);background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid var(--border)}
+  .nav .wrap{display:flex;align-items:center;gap:16px;height:58px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700}
+  .brand .dot{width:11px;height:11px;border-radius:3px;background:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 25%,transparent)}
+  .nav nav{margin-left:auto;display:flex;gap:20px;font-size:.9rem}
+  .nav nav a{color:var(--muted)}
+
+  .hero{padding:60px 0 24px;position:relative}
+  .hero::before{content:"";position:absolute;inset:-40% -20% auto;height:520px;z-index:-1;
+    background:radial-gradient(60% 60% at 30% 0%,color-mix(in srgb,var(--accent) 20%,transparent),transparent 70%),
+      radial-gradient(50% 50% at 80% 10%,color-mix(in srgb,var(--accent-2) 14%,transparent),transparent 70%)}
+  .eyebrow{font-family:var(--mono);font-size:.8rem;color:var(--accent);text-transform:uppercase;letter-spacing:.14em;margin-bottom:14px}
+  .hero h1{font-size:clamp(2.1rem,5.5vw,3.3rem);margin:0 0 .3em}
+  .hero h1 .grad{background:linear-gradient(100deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p.lead{font-size:1.18rem;color:var(--muted);max-width:640px;margin:0 0 24px}
+  .pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .pill{font-family:var(--mono);font-size:.76rem;padding:5px 11px;border-radius:20px;border:1px solid var(--border);background:var(--panel);color:var(--muted)}
+  .pill b{color:var(--accent-2)}
+
+  section{padding:48px 0;border-top:1px solid var(--border)}
+  section > .wrap > p{color:var(--muted);max-width:700px}
+  figure{margin:20px 0}
+  figure img{width:100%;border-radius:14px;border:1px solid var(--border);display:block;box-shadow:var(--shadow)}
+  figcaption{color:var(--faint);font-size:.82rem;margin-top:8px;text-align:center;font-family:var(--mono)}
+
+  pre.code{background:var(--code);color:#e8eefc;border:1px solid var(--border);border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.85rem;line-height:1.65;margin:16px 0}
+  pre.code .c{color:#6b7a99}.pre .k{}
+  pre.code .k{color:#c79bff}pre.code .t{color:#2bd4c4}pre.code .s{color:#9ece6a}pre.code .f{color:#7aa2f7}pre.code .p{color:#e0a458}
+
+  .term{background:#0a0d14;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin:16px 0;box-shadow:var(--shadow)}
+  .term .bar{display:flex;align-items:center;gap:7px;padding:10px 14px;background:#0f131c;border-bottom:1px solid var(--border)}
+  .term .bar i{width:11px;height:11px;border-radius:50%;display:block}
+  .term .bar .r{background:#ff5f56}.term .bar .y{background:#ffbd2e}.term .bar .g{background:#27c93f}
+  .term .bar .ttl{margin-left:8px;font-family:var(--mono);font-size:.76rem;color:#5d6b80}
+  .term pre{margin:0;padding:16px 18px;overflow-x:auto;font-size:.82rem;line-height:1.7;color:#c9d4e6}
+  .term .pr{color:#9d7bff}.term .cmd{color:#e6edf3}.term .out{color:#8b95a5}.term .hl{color:#c79bff;font-weight:600}.term .ok{color:#3fb950}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px}
+  .card h3{margin:0 0 6px;font-size:1.02rem}
+  .card .lbl{font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+  .card p{color:var(--muted);font-size:.92rem;margin:.4em 0 0}
+
+  table.score{width:100%;border-collapse:collapse;margin-top:16px;font-size:.92rem}
+  table.score th,table.score td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  table.score th{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint)}
+  table.score td.k{white-space:nowrap;font-weight:600}
+  .callout{border-left:3px solid var(--accent);background:var(--panel);padding:14px 18px;border-radius:0 10px 10px 0;margin:18px 0;color:var(--muted);font-size:.93rem}
+  .callout b{color:var(--text)}
+  footer{border-top:1px solid var(--border);padding:36px 0 60px;color:var(--faint);font-size:.9rem}
+  footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+  @media (max-width:680px){.grid2{grid-template-columns:1fr}.nav nav{display:none}}
+</style>
+</head>
+<body>
+
+<header class="nav"><div class="wrap">
+  <span class="brand"><span class="dot"></span> Metrics Workbench</span>
+  <nav>
+    <a href="index.html">← Walkthrough</a>
+    <a href="#interop">Interop</a><a href="#ai">AI</a><a href="#cli">CLI</a>
+    <a href="https://github.com/jaseci-labs/the-jac-workshop/tree/main/metrics-workbench" target="_blank" rel="noopener">Source ↗</a>
+  </nav>
+</div></header>
+
+<div class="hero"><div class="wrap">
+  <div class="eyebrow">The capstone · goes as deep as Jac goes</div>
+  <h1>When you <span class="grad">do</span> need the Python ecosystem.</h1>
+  <p class="lead">Pulse proved Jac stands on its own. The <b>Metrics Workbench</b> is the other half of the
+    story: a real analytics app where <b>pandas</b>, <b>pyod</b> and <b>statsmodels</b> do the
+    numeric heavy lifting JavaScript has no answer for — imported straight into the Jac source, behind
+    the same walkers that power the CLI, the REST API, and this dashboard.</p>
+  <div class="pills">
+    <span class="pill"><b>pandas</b> dataframes</span>
+    <span class="pill"><b>pyod</b> IForest</span>
+    <span class="pill"><b>statsmodels</b> SARIMAX</span>
+    <span class="pill"><b>by llm</b> insight + suggestions + agent</span>
+    <span class="pill">129,600 rows</span>
+  </div>
+
+  <figure style="margin-top:34px">
+    <img src="assets/mw-hero.png" alt="Metrics Workbench dashboard: revenue time-series with anomaly markers and a widening SARIMAX forecast confidence band, an LLM-authored insight, and LLM-suggested metrics">
+    <figcaption>The running app — anomaly detection, forecast with 95% CI, LLM insight, and LLM-suggested metrics. One Jac source.</figcaption>
+  </figure>
+</div></div>
+
+<section id="interop"><div class="wrap">
+  <h2>Python interop — the load-bearing kind</h2>
+  <p>The numeric work lives in one Python module (<span class="kbd">analytics.py</span>) and is
+    <b>imported directly into the Jac source</b>. This is the escape-hatch flavour of interop: reach for
+    the mature scientific stack when it earns its keep, without leaving your app.</p>
+
+  <pre class="code"><span class="c"># api.jac — the graph model + walkers are Jac; the math is Python, imported in</span>
+<span class="k">import from</span> analytics {
+    describe_dataset  <span class="k">as</span> py_describe,      <span class="c"># pandas — ingest 129k rows</span>
+    detect_anomalies  <span class="k">as</span> py_detect,        <span class="c"># pyod IForest</span>
+    forecast          <span class="k">as</span> py_forecast,      <span class="c"># statsmodels SARIMAX + conf. intervals</span>
+    web_dashboard     <span class="k">as</span> py_web_dashboard  <span class="c"># pandas + both, chart-ready</span>
+}</pre>
+
+  <div class="grid2">
+    <div class="card"><div class="lbl">pyod</div><h3>Anomaly detection</h3>
+      <p>IForest over the daily-resampled metric flags the promo spike and outage dip — 5 anomalies out of 90 days, with scores.</p></div>
+    <div class="card"><div class="lbl">statsmodels</div><h3>SARIMAX forecast</h3>
+      <p>A seasonal ARIMA fit projects 30 days ahead with a 95% confidence band that widens with the horizon — the teal cone on the chart.</p></div>
+  </div>
+  <div class="callout"><b>Why this is the capstone.</b> Pulse writes its z-score in pure Jac because it can.
+    The workbench doesn't pretend to reimplement SARIMAX or IForest in the browser — it imports
+    the real thing. Same graph, same walkers, same <span class="kbd">by llm</span>; heavier engine.</div>
+</div></section>
+
+<section id="ai"><div class="wrap">
+  <h2>AI, three ways — all typed</h2>
+  <p>The LLM's inputs and outputs are Jac types, not prompt strings. Three <span class="kbd">by llm</span>
+    functions power three different features:</p>
+
+  <pre class="code"><span class="c"># the signatures ARE the prompts — structured in, structured out</span>
+<span class="k">def</span> <span class="f">narrate</span>(kind: <span class="t">str</span>, metric: <span class="t">str</span>, findings_json: <span class="t">str</span>) -> <span class="t">InsightPayload</span> <span class="k">by llm</span>();
+<span class="k">def</span> <span class="f">suggest_metrics</span>(dataset: <span class="t">str</span>, columns_json: <span class="t">str</span>, sample_json: <span class="t">str</span>) -> <span class="t">list</span>[<span class="t">MetricSuggestion</span>] <span class="k">by llm</span>();
+<span class="k">def</span> <span class="f">decide_next</span>(question: <span class="t">str</span>, metric: <span class="t">str</span>, recent: <span class="t">str</span>) -> <span class="t">Direction</span> <span class="k">by llm</span>();  <span class="c"># an enum</span></pre>
+
+  <div class="grid2">
+    <div class="card"><div class="lbl">by llm · narrate</div><h3>Explains the anomalies</h3>
+      <p>Given the run's numbers, the LLM writes a typed <span class="kbd">Insight</span> — "highest anomaly score 0.818 on May 2 with revenue $51.16M".</p></div>
+    <div class="card"><div class="lbl">by llm · suggest_metrics</div><h3>Proposes new metrics</h3>
+      <p>Given the columns + a sample, it returns 10 candidate metrics with pandas/SQL expressions and rationales — "Refund Rate = SUM(refunds)/SUM(gross_revenue)".</p></div>
+  </div>
+
+  <p style="margin-top:22px">The third — <span class="kbd">decide_next</span> — returns a Jac <b>enum</b> that steers a
+    walker through the graph. This is an <b>agent as an object-spatial traversal</b>: the LLM decides where
+    to hop next at each node it visits.</p>
+  <pre class="code"><span class="k">walker</span> <span class="t">investigate</span> {
+    <span class="k">can</span> at_metric <span class="k">with</span> <span class="t">Metric</span> <span class="k">entry</span> {
+        decision = <span class="f">decide_next</span>(<span class="k">self</span>.question, here.name, recent_summary);
+        <span class="k">if</span> decision == <span class="t">Direction</span>.LOOK_AT_RUNS { <span class="k">visit</span> [recent[-1]]; }
+        <span class="k">elif</span> decision == <span class="t">Direction</span>.HOP_SIBLING { <span class="k">visit</span> [sibling_metric]; }
+        <span class="k">else</span> { <span class="k">self</span>._finalize(); }   <span class="c"># narrate what it found</span>
+    }
+}</pre>
+</div></section>
+
+<section id="cli"><div class="wrap">
+  <h2>The same walkers, from the CLI</h2>
+  <p>Every capability is a CLI subcommand too — no separate code. Real output, captured from the running
+    app against 129,600 rows:</p>
+
+  <div class="term">
+    <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="ttl">metrics-workbench — jac run api.jac</span></div>
+<pre><span class="pr">$</span> <span class="cmd">jac run api.jac ingest sales data/synth_ecom.csv</span>
+<span class="out">sales   <span class="hl">129600 rows</span>   [order_ts, region, channel, orders, gross_revenue, …]</span>
+
+<span class="pr">$</span> <span class="cmd">jac run api.jac anomaly sales revenue 90</span>
+<span class="out">run 569ff4c7  <span class="hl">anomalies=5/90</span>  108ms          <span class="c"># pyod IForest</span></span>
+
+<span class="pr">$</span> <span class="cmd">jac run api.jac forecast sales revenue 30</span>
+<span class="out">run 80c6db31  <span class="hl">aic=2488.2</span> horizon=30d  124ms     <span class="c"># statsmodels SARIMAX</span></span>
+
+<span class="pr">$</span> <span class="cmd">jac run api.jac narrate sales revenue 569ff4c7</span>
+<span class="out">Revenue anomalies detected over the past 90 days using Isolation Forest.
+  - Highest anomaly score 0.818 on May 2, 2026 with revenue $51.16M
+  - Consecutive high-value anomalies in early May suggest a revenue surge
+  (confidence=0.82)</span>
+
+<span class="pr">$</span> <span class="cmd">jac run api.jac investigate "what happened to revenue"</span>
+<span class="out"><span class="c"># the by-llm agent walks the graph, then narrates what it found</span>
+30-day forecast showing weekly seasonality; confidence intervals widen
+sharply toward late July — caution for longer-term predictions.</span></pre>
+  </div>
+</div></section>
+
+<section id="targets"><div class="wrap">
+  <h2>One source · the whole menu</h2>
+  <p>Like Pulse, the workbench compiles to every build target — it's just carrying a heavier engine.</p>
+  <table class="score">
+    <thead><tr><th>Showcase point</th><th>How the capstone does it</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Python interop</td><td class="muted">pandas + pyod + statsmodels imported into <span class="kbd">api.jac</span> via <span class="kbd">analytics.py</span></td></tr>
+      <tr><td class="k">Native DB / graph</td><td class="muted">Dataset → Metric → AnalysisRun → Insight, per-user <span class="kbd">root</span>, no ORM</td></tr>
+      <tr><td class="k">AI as a primitive</td><td class="muted">3× <span class="kbd">by llm</span>: narrate, suggest_metrics, and an agentic <span class="kbd">investigate</span> walker</td></tr>
+      <tr><td class="k">Full-stack web</td><td class="muted">a <span class="kbd">.cl.jac</span> recharts dashboard calling the walkers via <span class="kbd">root spawn</span> (above)</td></tr>
+      <tr><td class="k">REST API</td><td class="muted"><span class="kbd">:pub</span> walkers → per-user endpoints (<span class="kbd">POST /walker/wb_dashboard</span>)</td></tr>
+      <tr><td class="k">CLI</td><td class="muted"><span class="kbd">jac run api.jac &lt;cmd&gt;</span> — ingest, anomaly, forecast, narrate, investigate, summary, lineage</td></tr>
+    </tbody>
+  </table>
+  <div class="callout" style="border-color:var(--accent-2)">
+    <b>Run it yourself.</b>
+    <span class="kbd">cd metrics-workbench</span> → <span class="kbd">jac install</span> →
+    <span class="kbd">python data/generate_synth.py data/synth_ecom.csv</span> →
+    <span class="kbd">jac start --dev main.jac</span> (web) or <span class="kbd">jac run api.jac anomaly sales revenue 90</span> (CLI).
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <div>Metrics Workbench · the capstone of the Jac workshop<br>
+    <span style="color:var(--muted)">Every command &amp; output was captured from the running app.</span></div>
+  <div style="text-align:right">
+    <a href="index.html">← Back to the Pulse walkthrough</a><br>
+    <a href="https://github.com/jaseci-labs/the-jac-workshop/tree/main/metrics-workbench">metrics-workbench/ ↗</a>
+  </div>
+</div></footer>
+</body>
+</html>

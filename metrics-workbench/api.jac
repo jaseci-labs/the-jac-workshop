@@ -16,7 +16,8 @@ import from analytics {
     output_forecast_summary as py_forecast_summary,
     output_field_int as py_output_int,
     json_dumps as py_dumps,
-    to_json as py_json
+    to_json as py_json,
+    web_dashboard as py_web_dashboard
 }
 
 import from datetime { datetime }
@@ -542,6 +543,74 @@ walker investigate {
     def _finalize(metric_name: str, findings: str) {
         payload = narrate("investigation", metric_name, findings);
         report payload;
+    }
+}
+
+
+# ---------------------------------------------------------------------------
+# Web-facing walkers — called from the client dashboard via `root() spawn`.
+# They reuse the def:pub functions + analytics above, and report client-ready
+# dicts (the same shape the CLI prints).
+# ---------------------------------------------------------------------------
+
+walker:pub wb_seed {
+    can run with Root entry {
+        existing = [-->][?:Dataset, name == "sales"];
+        if not existing {
+            ingest_dataset("sales", "data/synth_ecom.csv");
+            define_metric("sales", "revenue", "gross_revenue - refunds", "order_ts");
+        }
+        report {"seeded": True};
+    }
+}
+
+walker:pub wb_dashboard {
+    has dataset: str = "sales";
+    has metric: str = "revenue";
+    can run with Root entry {
+        ds = find_dataset(self.dataset);
+        m = find_metric(self.dataset, self.metric);
+        report py_web_dashboard(ds.source_path, m.expression, m.time_column, 90, 30, "weekly");
+    }
+}
+
+walker:pub wb_narrate {
+    has dataset: str = "sales";
+    has metric: str = "revenue";
+    can run with Root entry {
+        run = detect_anomalies(self.dataset, self.metric, 90, "iforest");
+        insight = narrate_run(self.dataset, self.metric, jid(run)[:8]);
+        report {
+            "summary": insight.summary,
+            "bullets": insight.bullets,
+            "confidence": insight.confidence
+        };
+    }
+}
+
+walker:pub wb_suggest {
+    has dataset: str = "sales";
+    can run with Root entry {
+        ds = find_dataset(self.dataset);
+        sample = py_preview(ds.source_path, "orders", "order_ts", 3);
+        suggestions = suggest_metrics(ds.name, py_dumps(ds.columns), py_dumps(sample));
+        out: list[dict] = [];
+        for s in suggestions {
+            out.append({"name": s.name, "expression": s.expression, "rationale": s.rationale});
+        }
+        report out;
+    }
+}
+
+walker:pub wb_runs {
+    has dataset: str = "sales";
+    has metric: str = "revenue";
+    can run with Root entry {
+        out: list[dict] = [];
+        for r in list_runs(self.dataset, self.metric) {
+            out.append({"jid": r.jid[:8], "kind": r.kind, "run_at": r.run_at, "anomalies": r.anomaly_count, "horizon": r.horizon_days});
+        }
+        report out;
     }
 }
 
