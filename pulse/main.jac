@@ -9,7 +9,7 @@ mounts the client dashboard (web.cl.jac). No CORS, no fetch layer, no schema
 duplicated as TypeScript - the client calls the walkers directly.
 """
 
-import from api { seed, scan, forecast, narrate, series_points, dashboard }
+import from api { seed, scan, forecast, narrate, series_points, dashboard, run_history }
 
 cl {
     import from .web { app as ClientApp }

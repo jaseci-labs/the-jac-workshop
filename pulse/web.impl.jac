@@ -34,18 +34,18 @@ impl app.boot -> None {
     idx = r.reports[0]["anomalies"];
     points = pts;
     anomalies = idx;
+    hr = root spawn run_history(series="orders");   # this user's own past runs
+    history = hr.reports[0]["runs"];
     status = f"{len(pts)} points · {len(idx)} anomalies";
 }
 
 impl app.do_scan -> None {
     busy = True;
     status = "scanning…";
-    r = root spawn dashboard(series="orders");
-    pts = r.reports[0]["points"];
-    idx = r.reports[0]["anomalies"];
-    points = pts;
-    anomalies = idx;
-    status = f"{len(idx)} anomalies flagged";
+    root spawn scan(series="orders");        # records a Run on your root
+    hr = root spawn run_history(series="orders");
+    history = hr.reports[0]["runs"];
+    status = f"scan recorded · {len(history)} in history";
     busy = False;
 }
 
@@ -69,6 +69,8 @@ impl app.do_narrate -> None {
     bu = r.reports[0]["bullets"];
     summary = su;
     bullets = bu;
+    hr = root spawn run_history(series="orders");   # the narrate run now shows in history
+    history = hr.reports[0]["runs"];
     status = "insight ready";
     busy = False;
 }

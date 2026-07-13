@@ -40,6 +40,8 @@ impl app.boot -> None {
     anomaly_count = ac;
     point_count = pc;
     aic = av;
+    hr = root spawn wb_runs(dataset="sales", metric="revenue");   # this user's own past runs
+    history = hr.reports[0];
     status = f"{pc} daily points · {ac} anomalies · SARIMAX fit";
 }
 
@@ -52,6 +54,8 @@ impl app.do_narrate -> None {
     bu = d["bullets"];
     summary = su;
     bullets = bu;
+    hr = root spawn wb_runs(dataset="sales", metric="revenue");   # the detect run now shows in history
+    history = hr.reports[0];
     status = "insight ready";
     busy = False;
 }

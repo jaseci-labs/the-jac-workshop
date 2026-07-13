@@ -19,6 +19,7 @@ every build target with a near-zero diff:
 # separate analytics.py, like the capstone does, is the *other* thing - an
 # escape hatch for code already written in Python.)
 import from statistics { linear_regression }
+import from datetime { datetime }
 
 # ---------------------------------------------------------------------------
 # Structured payload the LLM returns (typed in, typed out - not a string)
@@ -39,10 +40,12 @@ node Series {
 }
 
 node Run {
+    has kind: str = "scan";        # "scan" | "narrate" - what the user did
     has threshold: float = 2.5;
     has count: int = 0;
     has anomalies: list[int] = [];
     has values: list[float] = [];
+    has run_at: str = "";          # readable timestamp, for the history panel
 }
 
 node Insight {
@@ -56,6 +59,35 @@ node Insight {
 # The model is configured in jac.toml ([plugins.byllm.model]).
 # ---------------------------------------------------------------------------
 def write_insight(series_name: str, anomaly_count: int, flagged_values: list[float]) -> InsightText by llm();
+
+# The z-score detector, in ONE place (pure Jac - no pandas, no pyod). `scan`
+# (CLI), `dashboard` (web display) and `narrate` all share it, so the detection
+# logic lives once. `_`-prefixed, so it stays a helper and never hits the API.
+# Returns the flagged indices and their values.
+def _detect(points: list[float], threshold: float) -> tuple[list[int], list[float]] {
+    n = len(points);
+    if n == 0 {
+        return ([], []);
+    }
+    m = sum(points) / n;
+    std = (sum([(v - m) ** 2 for v in points]) / n) ** 0.5;
+    idx: list[int] = [];
+    flagged: list[float] = [];
+    for (i, v) in enumerate(points) {
+        z = (v - m) / std if std > 0.0 else 0.0;
+        if abs(z) > threshold {
+            idx.append(i);
+            flagged.append(v);
+        }
+    }
+    return (idx, flagged);
+}
+
+# A readable timestamp for run history. `datetime` is a Python stdlib module
+# imported straight into Jac - the same interop move as `statistics` above.
+def _now() -> str {
+    return datetime.now().strftime("%b %d · %H:%M:%S");
+}
 
 # ---------------------------------------------------------------------------
 # Walkers - one surface, every target:
@@ -114,9 +146,9 @@ walker:pub series_points {
     }
 }
 
-# One-shot: seed-if-empty + z-score, all in a single walker (one root context).
-# The web client's boot uses this so a fresh graph populates in one call
-# (the desktop in-process runtime doesn't share graph state across spawns).
+# Seed-if-empty + display: returns the series points and its current anomalies
+# for the chart. Read-only - it does NOT record a Run (that's what `scan` and
+# `narrate` do), so the history panel only reflects what the user explicitly ran.
 # `:protect` = JWT-authenticated + per-user: it seeds and reads the CALLER's
 # OWN root, so each signed-in user gets their own private series.
 walker:protect dashboard {
@@ -140,18 +172,8 @@ walker:protect dashboard {
         } else {
             s = matches[0];
         }
-        pts = s.points;
-        n = len(pts);
-        m = sum(pts) / n;
-        std = (sum([(v - m) ** 2 for v in pts]) / n) ** 0.5;
-        idx: list[int] = [];
-        for (i, v) in enumerate(pts) {
-            z = (v - m) / std if std > 0.0 else 0.0;
-            if abs(z) > 2.5 {
-                idx.append(i);
-            }
-        }
-        report {"points": pts, "anomalies": idx};
+        det = _detect(s.points, 2.5);
+        report {"points": s.points, "anomalies": det[0]};
     }
 }
 
@@ -174,19 +196,9 @@ walker:pub scan {
             disengage;
         }
         th = float(self.threshold);  # CLI args arrive as strings; coerce once.
-        m = sum(vals) / n;
-        var = sum([(v - m) ** 2 for v in vals]) / n;
-        std = var ** 0.5;
-        idx: list[int] = [];
-        flagged: list[float] = [];
-        for (i, v) in enumerate(vals) {
-            z = (v - m) / std if std > 0.0 else 0.0;
-            if abs(z) > th {
-                idx.append(i);
-                flagged.append(v);
-            }
-        }
-        run = Run(threshold=th, count=len(idx), anomalies=idx, values=flagged);
+        det = _detect(vals, th);     # the shared z-score detector
+        idx = det[0];
+        run = Run(kind="scan", threshold=th, count=len(idx), anomalies=idx, values=det[1], run_at=_now());
         s ++> run;
         report {"run": jid(run), "anomalies": len(idx), "indices": idx};
     }
@@ -221,7 +233,9 @@ walker:protect forecast {
     }
 }
 
-# Hand the latest run's numbers to the LLM; store its prose as an Insight node.
+# Self-sufficient, like the capstone's wb_narrate: detect the anomalies, record
+# the Run, then hand its numbers to the LLM and store the prose as an Insight.
+# So Narrate works straight after boot, with no separate Scan first.
 walker:protect narrate {
     has series: str;
 
@@ -232,15 +246,38 @@ walker:protect narrate {
             disengage;
         }
         s = smatches[0];
-        runs = [s -->][?:Run];
-        if not runs {
-            report {"error": "no runs yet - scan first"};
-            disengage;
-        }
-        run = runs[-1];
+        det = _detect(s.points, 2.5);
+        run = Run(kind="narrate", threshold=2.5, count=len(det[0]), anomalies=det[0], values=det[1], run_at=_now());
+        s ++> run;
         payload = write_insight(self.series, run.count, run.values);
         ins = Insight(summary=payload.summary, bullets=payload.bullets);
         run ++> ins;
         report {"summary": payload.summary, "bullets": payload.bullets};
+    }
+}
+
+# History: the user's recent runs on this series (newest first), each with its
+# anomaly count and - if it was narrated - the LLM insight summary. The
+# persistence payoff made visible: runs live on your own root, so they're still
+# here next time you sign in (and another user sees only their own).
+walker:protect run_history {
+    has series: str = "orders";
+
+    can run with Root entry {
+        smatches = [-->][?:Series, name == self.series];
+        if not smatches {
+            report {"runs": []};
+            disengage;
+        }
+        s = smatches[0];
+        rns: list[Run] = [s -->][?:Run];        # typed, so the report schema resolves
+        out: list[dict] = [];
+        for r in rns {
+            ins_list: list[Insight] = [r -->][?:Insight];
+            summary = ins_list[-1].summary if ins_list else "";
+            out.append({"kind": r.kind, "run_at": r.run_at, "anomalies": r.count, "summary": summary});
+        }
+        out.reverse();                    # newest first
+        report {"runs": out[:8]};         # keep the panel tidy
     }
 }
