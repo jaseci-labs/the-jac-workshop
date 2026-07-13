@@ -5,20 +5,22 @@ description = "Metrics Workbench — the capstone: heavy Python interop (pandas 
 kind = "web-app"
 entry-point = "main.jac"
 
-# The load-bearing Python ecosystem — imported into api.jac via analytics.py.
-# Numeric heavy-lifting JS has no answer for: dataframes, isolation-forest
-# anomalies (pyod), SARIMAX forecasts.
 [dependencies]
 pandas = "~=3.0"
 numpy = "~=2.5"
 statsmodels = "~=0.14"
 pyod = "~=3.6"
+byllm = "~=0.6"
 
 [dependencies.npm]
 react = "^18.2.0"
 react-dom = "^18.2.0"
 recharts = "latest"
 lucide-react = "latest"
+react-router-dom = "latest"
+react-error-boundary = "latest"
+"@tanstack/react-form" = "latest"
+zod = "latest"
 
 [dependencies.npm.dev]
 vite = "^6.4.1"
