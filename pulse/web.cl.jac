@@ -6,10 +6,10 @@ invokes them over the wire with no fetch/CORS glue. The chart is `recharts`
 """
 
 import from "recharts" { ResponsiveContainer, ComposedChart, Line, Scatter, XAxis, YAxis, CartesianGrid, Tooltip }
-import from "lucide-react" { Activity, Search, TrendingUp, Sparkles, TriangleAlert, LogOut }
+import from "lucide-react" { Activity, Search, TrendingUp, Sparkles, TriangleAlert, LogOut, History, Clock }
 import from "@jac/runtime" { jacLogin, jacSignup, jacLogout, jacIsLoggedIn }
 
-sv import from api { dashboard, forecast, narrate }
+sv import from api { dashboard, scan, forecast, narrate, run_history }
 
 glob CSS = """
   .pulse-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;font-weight:600;font-size:.9rem;cursor:pointer;border:1px solid #2b3444;background:#161c28;color:#e6edf3;transition:transform .12s ease,background .12s ease,border-color .12s ease;}
@@ -39,6 +39,7 @@ def:pub app -> JsxElement {
         intercept: float = 0.0,
         summary: str = "",
         bullets: list = [],
+        history: list[dict] = [],
         status: str = "loading…",
         busy: bool = False;
 
@@ -168,6 +169,30 @@ def:pub app -> JsxElement {
                                 <TriangleAlert size={15} color="#ff6a3d" style={{"flexShrink": "0", "marginTop": "3px"}}/>
                                 <span>{b}</span>
                             </div> for (idx, b) in enumerate(bullets)]}
+                        </div>
+                    </div>
+                }
+
+                {history and
+                    <div style={{
+                        "marginTop": "18px", "background": "#0f1420", "border": "1px solid #232a36",
+                        "borderRadius": "16px", "padding": "16px 18px"
+                    }}>
+                        <div style={{"display": "flex", "alignItems": "center", "gap": "8px", "color": "#8b95a5", "fontSize": ".76rem", "fontFamily": "ui-monospace,monospace", "letterSpacing": ".05em", "marginBottom": "12px"}}>
+                            <History size={15}/> RECENT RUNS · persisted on your root — still here when you sign back in
+                        </div>
+                        <div style={{"display": "flex", "flexDirection": "column", "gap": "8px"}}>
+                            {[<div key={idx} style={{"display": "flex", "alignItems": "center", "gap": "11px", "padding": "9px 12px", "borderRadius": "10px", "background": "#121620", "border": "1px solid #1e2634"}}>
+                                <span style={{
+                                    "fontSize": ".68rem", "fontWeight": "700", "padding": "2px 9px", "borderRadius": "20px", "fontFamily": "ui-monospace,monospace",
+                                    "background": "rgba(255,106,61,.16)" if r["kind"] == "narrate" else "rgba(91,139,212,.16)",
+                                    "color": "#ff8a52" if r["kind"] == "narrate" else "#5b8bd4"
+                                }}>{r["kind"]}</span>
+                                <Clock size={13} color="#5d6b80"/>
+                                <span style={{"color": "#8b95a5", "fontSize": ".82rem", "fontFamily": "ui-monospace,monospace", "whiteSpace": "nowrap"}}>{r["run_at"]}</span>
+                                <span style={{"color": "#e6edf3", "fontSize": ".85rem", "whiteSpace": "nowrap"}}>{r["anomalies"]} anomalies</span>
+                                {r["summary"] and <span style={{"color": "#5d6b80", "fontSize": ".82rem", "overflow": "hidden", "textOverflow": "ellipsis", "whiteSpace": "nowrap"}}>— {r["summary"]}</span>}
+                            </div> for (idx, r) in enumerate(history)]}
                         </div>
                     </div>
                 }

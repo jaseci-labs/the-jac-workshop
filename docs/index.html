@@ -395,10 +395,15 @@ slope = fit.slope;</pre>
     <figcaption>The gate in front of the dashboard — sign in, and every walker call lands on <b>your</b> root</figcaption>
   </figure>
 
-  <p class="muted">Verified with two accounts: sign in as one user, seed a series, sign in as another —
-    the graphs never cross. Each login returns a distinct <span class="kbd">root_id</span>, and a walker call
-    with no token is rejected <span class="kbd">401</span>. Same walkers, same file, one keyword — the DB and the
-    auth layer <b>are</b> the graph.</p>
+  <p>And you can <b>see</b> the persistence: every Scan and Narrate writes a <span class="kbd">Run</span> node to
+    your root, and the dashboard's <b>Recent runs</b> panel lists them back — with timestamps and the LLM
+    insight. Sign out, sign back in, and your history is still there. It's a <span class="kbd">run_history</span>
+    walker doing a graph traversal (<span class="kbd">[series --&gt;][?:Run]</span>) — no query language, no table.</p>
+
+  <p class="muted">Verified with two accounts: sign in as one user, record some runs, sign in as another —
+    the graphs never cross (each user's Recent runs shows only their own). Each login returns a distinct
+    <span class="kbd">root_id</span>, and a walker call with no token is rejected <span class="kbd">401</span>.
+    Same walkers, same file, one keyword — the DB and the auth layer <b>are</b> the graph.</p>
 </div></section>
 
 <section id="web"><div class="wrap">
@@ -420,8 +425,8 @@ slope = fit.slope;</pre>
   </div>
 
   <figure>
-    <img src="assets/pulse-web.png" alt="Pulse full-stack web dashboard: line chart with the spike and dip flagged red, and an LLM-authored Insight card">
-    <figcaption>Live screenshot — chart, Scan / Forecast / Narrate, and the LLM Insight are all driven by the same walkers as the CLI</figcaption>
+    <img src="assets/pulse-web.png" alt="Pulse full-stack web dashboard: signed-in view with Sign out, the anomaly chart, an LLM-authored Insight card, and a Recent runs history panel">
+    <figcaption>Live signed-in screenshot — the chart, the LLM Insight, and the <b>Recent runs</b> history (persisted per-user) are all driven by the same walkers as the CLI</figcaption>
   </figure>
 
   <p class="muted">Click <b>Narrate</b> and the browser calls the <span class="kbd">narrate</span> walker over

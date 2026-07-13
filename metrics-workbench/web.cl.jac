@@ -1,17 +1,17 @@
 """Metrics Workbench — client dashboard (compiled from Jac to React).
 
 `sv import` pulls the server walkers in as typed client calls; `root spawn`
-invokes them over HTTP. The walkers are `:priv`, so the client must be logged
+invokes them over HTTP. The walkers are `:protect`, so the client must be logged
 in — and each user then runs against their own isolated `root` (per-user
 persistence, no auth-scoping code). The numbers come from pandas / pyod /
 statsmodels server-side (analytics.py); the chart is `recharts`.
 """
 
 import from "recharts" { ResponsiveContainer, ComposedChart, Line, Scatter, Area, XAxis, YAxis, CartesianGrid, Tooltip }
-import from "lucide-react" { Database, TriangleAlert, Sparkles, Lightbulb, LogOut }
+import from "lucide-react" { Database, TriangleAlert, Sparkles, Lightbulb, LogOut, History, Clock }
 import from "@jac/runtime" { jacLogin, jacSignup, jacLogout, jacIsLoggedIn }
 
-sv import from api { wb_seed, wb_dashboard, wb_narrate, wb_suggest }
+sv import from api { wb_seed, wb_dashboard, wb_narrate, wb_suggest, wb_runs }
 
 glob CSS = """
   .mw-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;font-weight:600;font-size:.9rem;cursor:pointer;border:1px solid #2b3444;background:#161c28;color:#e6edf3;transition:transform .12s ease,background .12s ease,border-color .12s ease;}
@@ -42,6 +42,7 @@ def:pub app -> JsxElement {
         summary: str = "",
         bullets: list = [],
         suggestions: list = [],
+        history: list[dict] = [],
         status: str = "loading…",
         busy: bool = False;
 
@@ -179,6 +180,26 @@ def:pub app -> JsxElement {
                                 </div>
                                 <div style={{"color": "#8b95a5", "fontSize": ".86rem", "marginTop": "5px"}}>{s["rationale"]}</div>
                             </div> for (idx, s) in enumerate(suggestions)]}
+                        </div>
+                    </div>
+                }
+
+                {history and
+                    <div className="card">
+                        <div style={{"display": "flex", "alignItems": "center", "gap": "8px", "color": "#8b95a5", "fontSize": ".76rem", "fontFamily": "ui-monospace,monospace", "letterSpacing": ".05em", "marginBottom": "12px"}}>
+                            <History size={15}/> RECENT RUNS · persisted on your root — pandas/pyod runs, still here when you sign back in
+                        </div>
+                        <div style={{"display": "flex", "flexDirection": "column", "gap": "8px"}}>
+                            {[<div key={idx} style={{"display": "flex", "alignItems": "center", "gap": "11px", "padding": "9px 12px", "borderRadius": "10px", "background": "#0c0f16", "border": "1px solid #1e2634"}}>
+                                <span style={{
+                                    "fontSize": ".68rem", "fontWeight": "700", "padding": "2px 9px", "borderRadius": "20px", "fontFamily": "ui-monospace,monospace",
+                                    "background": "rgba(124,92,255,.16)" if r["kind"] == "forecast" else "rgba(255,84,112,.16)",
+                                    "color": "#9d7bff" if r["kind"] == "forecast" else "#ff5470"
+                                }}>{r["kind"]}</span>
+                                <Clock size={13} color="#5d6b80"/>
+                                <span style={{"color": "#8b95a5", "fontSize": ".82rem", "fontFamily": "ui-monospace,monospace", "whiteSpace": "nowrap"}}>{r["run_at"]}</span>
+                                <span style={{"color": "#e6edf3", "fontSize": ".85rem", "whiteSpace": "nowrap"}}>{r["anomalies"]} anomalies</span>
+                            </div> for (idx, r) in enumerate(history)]}
                         </div>
                     </div>
                 }

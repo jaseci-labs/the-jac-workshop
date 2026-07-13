@@ -110,8 +110,8 @@
   </div>
 
   <figure style="margin-top:34px">
-    <img src="assets/mw-hero.png" alt="Metrics Workbench dashboard: revenue time-series with anomaly markers and a widening SARIMAX forecast confidence band, an LLM-authored insight, and LLM-suggested metrics">
-    <figcaption>The running app — anomaly detection, forecast with 95% CI, LLM insight, and LLM-suggested metrics. One Jac source.</figcaption>
+    <img src="assets/mw-hero.png" alt="Metrics Workbench dashboard signed in: revenue time-series with anomaly markers and a widening SARIMAX forecast confidence band, an LLM-authored insight, and a Recent runs history panel">
+    <figcaption>The running app, signed in — anomaly detection, forecast with 95% CI, an LLM insight, and a <b>Recent runs</b> history that persists on your own root. One Jac source.</figcaption>
   </figure>
 </div></div>
 
@@ -235,10 +235,15 @@ sharply toward late July — caution for longer-term predictions.</span></pre>
     <figcaption>The gate — sign in, and every pandas / pyod / SARIMAX walker call lands on <b>your</b> root</figcaption>
   </figure>
 
-  <div class="callout"><b>Verified per-user isolation.</b> Sign in as one user, seed a dataset, sign in as
-    another — the graphs never cross. Each login returns a distinct <span class="kbd">root_id</span>; a walker
-    call with no token is rejected <span class="kbd">401</span>. Same walkers, same file — the database and the
-    auth layer <b>are</b> the graph.</div>
+  <p>The persistence is <b>visible</b>: each <b>Narrate anomalies</b> run writes an <span class="kbd">AnalysisRun</span>
+    node to your root, and the dashboard's <b>Recent runs</b> panel (top of this page) lists them back with
+    timestamps. The <span class="kbd">wb_runs</span> walker just traverses the graph
+    (<span class="kbd">metric -&gt;:AnalyzedBy:-&gt; run</span>) — sign back in and your run history is still there.</p>
+
+  <div class="callout"><b>Verified per-user isolation.</b> Sign in as one user, run a detection, sign in as
+    another — the graphs never cross (each user's Recent runs shows only their own). Each login returns a
+    distinct <span class="kbd">root_id</span>; a walker call with no token is rejected <span class="kbd">401</span>.
+    Same walkers, same file — the database and the auth layer <b>are</b> the graph.</div>
 </div></section>
 
 <section id="targets"><div class="wrap">

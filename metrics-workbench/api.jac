@@ -611,9 +611,10 @@ walker:protect wb_runs {
     can run with Root entry {
         out: list[dict] = [];
         for r in list_runs(self.dataset, self.metric) {
-            out.append({"jid": r.jid[:8], "kind": r.kind, "run_at": r.run_at, "anomalies": r.anomaly_count, "horizon": r.horizon_days});
+            out.append({"jid": r.jid[:8], "kind": r.kind, "run_at": r.run_at[:16].replace("T", " · "), "anomalies": r.anomaly_count, "horizon": r.horizon_days});
         }
-        report out;
+        out.reverse();               # newest first
+        report out[:8];              # keep the panel tidy
     }
 }
 
