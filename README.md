@@ -1,12 +1,22 @@
-# The Jac Workshop — Pulse
+# The Jac Workshop
 
-**One Jac source. Every build target.** A hands-on workshop that builds one small
-program — **Pulse**, a metric-anomaly narrator — then walks it down the whole
-"I like to build…" menu: CLI, REST API, full-stack web, AI agent, package.
+**One Jac source. Every build target.** A hands-on workshop showing what Jac does
+that the rest of the stack can't: native AI (`by llm`), a graph-native database,
+seamless Python/JS interop, and one source that compiles to a CLI, a REST API, a
+full-stack web app, desktop/PWA, and a pip/npm package.
 
-### 📖 Live walkthrough → https://jaseci-labs.github.io/the-jac-workshop/
+It ships **two complete, working apps**:
 
-[![Pulse walkthrough](docs/assets/og-preview.png)](https://jaseci-labs.github.io/the-jac-workshop/)
+- **[Pulse](pulse/)** — the slim **live-build** (~155 lines of Jac): one small
+  program walked down the whole "I like to build…" menu with a near-zero diff to
+  each target.
+- **[Metrics Workbench](metrics-workbench/)** — the **capstone**: a real analytics
+  app where **pandas · statsmodels · pyod** do the heavy lifting — anomaly
+  detection, SARIMAX forecasting, and three `by llm` features.
+
+### 📖 Live: **[Walkthrough](https://jaseci-labs.github.io/the-jac-workshop/)** · **[Capstone deep-dive ↗](https://jaseci-labs.github.io/the-jac-workshop/metrics-workbench.html)**
+
+[![The Jac Workshop](docs/assets/og-preview.png)](https://jaseci-labs.github.io/the-jac-workshop/)
 
 ## What's here
 
