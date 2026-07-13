@@ -162,7 +162,7 @@
   <span class="brand"><span class="dot"></span> Pulse</span>
   <nav>
     <a href="#build">Build</a><a href="#run">Run</a><a href="#interop">Interop</a>
-    <a href="#ai">AI</a><a href="#web">Web</a><a href="#targets">Targets</a>
+    <a href="#ai">AI</a><a href="#web">Web</a><a href="#ship">Ship</a><a href="#targets">Targets</a>
   </nav>
   <button class="theme" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">◑</button>
 </div></header>
@@ -185,9 +185,9 @@
       <div class="row"><span class="ic">▚</span><b>CLI tools &amp; native binaries</b><span class="tag">shown</span></div>
       <div class="row"><span class="ic">⇄</span><b>Backend APIs &amp; services</b><span class="tag">shown</span></div>
       <div class="row"><span class="ic">◱</span><b>Full-stack web apps</b><span class="tag">shown</span></div>
-      <div class="row"><span class="ic">▢</span><b>Desktop &amp; mobile apps</b><span class="tag soon">+1 flag</span></div>
+      <div class="row"><span class="ic">▢</span><b>Desktop &amp; mobile apps</b><span class="tag">PWA ✓</span></div>
       <div class="row"><span class="ic">✦</span><b>AI agents &amp; LLM apps</b><span class="tag">shown</span></div>
-      <div class="row"><span class="ic">◫</span><b>Reusable libraries &amp; packages</b><span class="tag soon">config</span></div>
+      <div class="row"><span class="ic">◫</span><b>Reusable libraries &amp; packages</b><span class="tag">shown</span></div>
     </div>
   </div>
 </div></div>
@@ -382,8 +382,47 @@ slope = fit.slope;</pre>
     code path as <span class="kbd">jac enter main.jac narrate orders</span> — one walker, two front doors.</p>
 </div></section>
 
+<section id="ship"><div class="wrap">
+  <div class="step-badge"><span class="n">6</span> Desktop · installable · packaged</div>
+  <h2>Same source — off to more targets</h2>
+  <p>No new app code. Each of these is a build flag over the exact same
+    <span class="kbd">main.jac</span> / <span class="kbd">api.jac</span>. Real build output below.</p>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="lbl" style="color:var(--accent-2)">installable app · PWA</div>
+      <h3>Runs on the desktop &amp; home screen</h3>
+      <pre class="code" style="font-size:.78rem;margin:10px 0 0"><span class="c"># installable, offline, no native deps</span>
+$ jac build --client pwa main.jac
+<span class="s">✔</span> Generated manifest.json
+<span class="s">✔</span> Generated sw.js (service worker)
+<span class="s">✔</span> Added PWA install banner
+<span class="s">✅ PWA build complete!</span></pre>
+    </div>
+    <div class="card">
+      <div class="lbl" style="color:var(--accent)">reusable package · wheel</div>
+      <h3>pip-installable, runtime vendored</h3>
+      <pre class="code" style="font-size:.78rem;margin:10px 0 0"><span class="c"># ship the core to others</span>
+$ jac bundle
+<span class="s">✔</span> pulse-0.1.0-py3-none-any.whl
+$ pip install pulse-0.1.0-*.whl
+$ python -c <span class="s">"import pulse"</span>   <span class="c"># ✓ works</span></pre>
+    </div>
+  </div>
+
+  <div class="term" style="margin-top:18px">
+    <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="ttl">pulse — native desktop</span></div>
+<pre><span class="p">$</span> <span class="cmd">jac build --client desktop main.jac</span>
+<span class="out"><span class="ok">✔</span> Client bundle built
+  Native window host: WKWebView (macOS) / WebKitGTK (Linux) — no Electron, no Rust</span></pre>
+  </div>
+  <p class="muted">One flag wraps the same UI in a native OS window. The client bundle builds
+    everywhere; the native window host is compiled by a C toolchain (on this build the
+    packaged webview binding links against WebKitGTK, so the host builds on Linux).</p>
+</div></section>
+
 <section id="targets"><div class="wrap">
-  <div class="step-badge"><span class="n">6</span> Fan out to every target</div>
+  <div class="step-badge"><span class="n">7</span> The scoreboard</div>
   <h2>Same core. The diff is a flag or a file.</h2>
   <p>Here's the scoreboard. The core never changes — each target is a thin shell around it.</p>
   <table class="score">

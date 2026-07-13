@@ -55,6 +55,14 @@ jac start --dev main.jac               # → http://localhost:8000
 The `.cl.jac` page calls the same walkers with `root spawn` — no fetch, no CORS.
 Click **Narrate** and the LLM writes a typed `Insight` right in the browser.
 
+## Ship it (same source)
+
+```bash
+jac bundle                             # → dist/pulse-0.1.0-py3-none-any.whl (pip-installable, runtime vendored)
+jac build --client pwa main.jac        # installable PWA: manifest + service worker + install banner
+jac build --client desktop main.jac    # native OS webview (no Electron); native host builds with a C toolchain
+```
+
 ## Config
 
 `jac.toml` sets the `by llm` model (`claude-haiku-4-5-20251001`). Swap

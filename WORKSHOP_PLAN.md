@@ -17,7 +17,9 @@ and **one source that compiles to every build target with a near-zero diff.**
 | **Full-stack web target** | ✅ **built, runs, screenshotted** — `jac start --dev main.jac` → dashboard + real LLM Insight |
 | Live walkthrough site (GitHub Pages) | ✅ **published** → https://jaseci-labs.github.io/the-jac-workshop/ |
 | `metrics-workbench/` — the **capstone** (heavy-lib showcase) | ✅ present (merged from `main`); backend + CLI + agentic AI |
-| Desktop / package targets for Pulse | ⬜ documented (a flag / config away) — not yet screenshotted |
+| Package target | ✅ **built & verified** — `jac bundle` → wheel; `pip install` + `import pulse` works (runtime vendored) |
+| Installable app (PWA) | ✅ **built** — `jac build --client pwa` → manifest + service worker + install banner |
+| Native desktop | ◑ client bundle builds; native window host needs a C toolchain — this build's webview binding links WebKitGTK (Linux) |
 
 **Verified end-to-end (via `jac enter`):**
 - `scan` — the z-score, written in **pure Jac**, flagged `indices [30, 31, 32, 55]`:
@@ -379,12 +381,15 @@ you're just not building them live.
 - ✅ **Web target** — `web.cl.jac` dashboard, built, running, screenshotted.
 - ✅ **Walkthrough site** — published to GitHub Pages, auto-deploys on push.
 - ✅ **narrate verified** — real Claude Haiku 4.5 output (CLI + browser).
-- ⬜ **Desktop target** — `jac create --kind desktop` scaffolds it; `jac build
-  --client desktop` needs a display to screenshot (not headless-friendly).
-- ⬜ **Package target** — `jac bundle` / wheel; produces an artifact, easy to add.
-- ⬜ **MockLLM** — wire the exact config so `narrate` works offline by default
-  (a real key is present in this env, so narrate works today; Mock is the
-  airgapped fallback).
+- ✅ **Package target** — `jac bundle` → wheel + sdist; verified `pip install` +
+  `import pulse` in a clean venv (jac runtime vendored into the wheel).
+- ✅ **Installable app (PWA)** — `jac build --client pwa` builds manifest +
+  service worker + install banner (works on this macOS box).
+- ◑ **Native desktop** — `jac build --client desktop` builds the client bundle;
+  the native window host needs a C toolchain. On this jac build the packaged
+  `build_libwebview.sh` is GTK-only, so the host links on Linux
+  (`libwebkit2gtk-4.1-dev`); macOS WKWebView path isn't wired in the shipped
+  script. Also needed `chmod +x build_libwebview.sh` and `pkg-config`.
 - ⬜ **Per-target git branches** — one tag per target so `git diff` is the reveal.
 
 ---
