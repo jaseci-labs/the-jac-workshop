@@ -15,6 +15,6 @@ kind = "app"
 # escape hatch for code already written in Python.)
 
 [plugins.byllm.model]
-# Matches the capstone so it works with the same byllm version. Swap for a
-# local model, or MockLLM, on airgapped / no-key workshop machines.
-default_model = "claude-sonnet-4-20250514"
+# Haiku 4.5: cheap + fast, ideal for narration. Swap for a local model, or
+# MockLLM, on airgapped / no-key workshop machines.
+default_model = "claude-haiku-4-5-20251001"

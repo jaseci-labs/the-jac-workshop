@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pulse — Build Anything, Once · A Jac Workshop Walkthrough</title>
+<meta name="description" content="Step-by-step: build one small Jac program (Pulse) and watch it become a CLI, a REST API, a web app, a desktop app, an AI agent, and a package — with a near-zero diff each time.">
+<meta property="og:title" content="Pulse — Build Anything, Once">
+<meta property="og:description" content="One Jac source. Every build target. A hands-on workshop walkthrough with real, verified output.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="assets/og-preview.png">
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#11151d; --panel-2:#161b26; --border:#232a36;
+    --text:#e6edf3; --muted:#93a0b4; --faint:#5d6b80;
+    --accent:#ff6a3d; --accent-2:#2bd4c4; --danger:#ff5470; --ok:#3fb950; --wire:#3a4658;
+    --code:#0d1220; --shadow:0 10px 40px -12px rgba(0,0,0,.6);
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  }
+  :root[data-theme="light"]{
+    --bg:#f7f8fa; --panel:#ffffff; --panel-2:#f1f4f8; --border:#dde3ea;
+    --text:#141a22; --muted:#4c5766; --faint:#8b97a6;
+    --accent:#e8552a; --accent-2:#0a9c90; --danger:#e0356a; --ok:#1a7f37; --wire:#c3ccd8;
+    --code:#0d1220; --shadow:0 10px 30px -14px rgba(20,30,50,.25);
+  }
+  @media (prefers-color-scheme:light){:root:not([data-theme]){--bg:#f7f8fa;--panel:#fff;--text:#141a22;}}
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code,pre{font-family:var(--mono)}
+  .wrap{max-width:940px;margin:0 auto;padding:0 20px}
+  h1,h2,h3{line-height:1.2;letter-spacing:-.02em}
+  h2{font-size:1.7rem;margin:0 0 .3em}
+  .muted{color:var(--muted)}
+  .kbd{font-family:var(--mono);font-size:.85em;background:var(--panel-2);border:1px solid var(--border);
+    border-radius:6px;padding:.1em .45em}
+
+  /* nav */
+  header.nav{position:sticky;top:0;z-index:20;backdrop-filter:blur(10px);
+    background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid var(--border)}
+  .nav .wrap{display:flex;align-items:center;gap:16px;height:58px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.02em}
+  .brand .dot{width:11px;height:11px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 25%,transparent)}
+  .nav nav{margin-left:auto;display:flex;gap:20px;font-size:.9rem}
+  .nav nav a{color:var(--muted)}
+  .theme{background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:8px;
+    width:34px;height:34px;cursor:pointer;font-size:15px;display:grid;place-items:center}
+
+  /* hero */
+  .hero{padding:64px 0 30px;position:relative}
+  .hero::before{content:"";position:absolute;inset:-40% -20% auto;height:520px;z-index:-1;
+    background:radial-gradient(60% 60% at 30% 0%,color-mix(in srgb,var(--accent) 20%,transparent),transparent 70%),
+      radial-gradient(50% 50% at 80% 10%,color-mix(in srgb,var(--accent-2) 16%,transparent),transparent 70%)}
+  .eyebrow{font-family:var(--mono);font-size:.8rem;color:var(--accent);text-transform:uppercase;
+    letter-spacing:.14em;margin-bottom:14px}
+  .hero h1{font-size:clamp(2.2rem,6vw,3.6rem);margin:0 0 .3em}
+  .hero h1 .grad{background:linear-gradient(100deg,var(--accent),var(--accent-2));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p.lead{font-size:1.2rem;color:var(--muted);max-width:620px;margin:0 0 26px}
+  .cta{display:flex;gap:12px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:10px;font-weight:600;
+    font-size:.95rem;border:1px solid var(--border);background:var(--panel-2);color:var(--text)}
+  .btn.primary{background:linear-gradient(100deg,var(--accent),#ff8a52);border-color:transparent;color:#1a0d08}
+  .btn:hover{text-decoration:none;transform:translateY(-1px)}
+
+  /* the menu card */
+  .menucard{margin-top:38px;background:var(--panel);border:1px solid var(--border);border-radius:16px;
+    box-shadow:var(--shadow);overflow:hidden}
+  .menucard .top{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);
+    background:var(--panel-2)}
+  .menucard .top .d{width:11px;height:11px;border-radius:50%;background:var(--wire)}
+  .menucard .top .t{margin-left:8px;font-family:var(--mono);font-size:.8rem;color:var(--faint)}
+  .menu{display:grid;grid-template-columns:1fr 1fr;gap:0}
+  .menu .row{display:flex;align-items:center;gap:12px;padding:15px 18px;border-bottom:1px solid var(--border)}
+  .menu .row:nth-child(odd){border-right:1px solid var(--border)}
+  .menu .row .ic{width:26px;height:26px;flex:none;display:grid;place-items:center;border-radius:7px;
+    background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);font-size:14px}
+  .menu .row b{font-weight:600}
+  .menu .row .tag{margin-left:auto;font-family:var(--mono);font-size:.7rem;color:var(--ok);
+    background:color-mix(in srgb,var(--ok) 12%,transparent);padding:2px 7px;border-radius:20px}
+  .menu .row .tag.soon{color:var(--faint);background:var(--panel-2)}
+
+  /* sections */
+  section{padding:52px 0;border-top:1px solid var(--border)}
+  .step-badge{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:.78rem;
+    color:var(--accent-2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+  .step-badge .n{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;
+    background:color-mix(in srgb,var(--accent-2) 15%,transparent);color:var(--accent-2);font-weight:700}
+  section > .wrap > p{color:var(--muted);max-width:680px}
+
+  /* code + terminal */
+  pre.code{background:var(--code);color:#e8eefc;border:1px solid var(--border);border-radius:12px;
+    padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.65;margin:18px 0}
+  pre.code .c{color:#6b7a99}     /* comment */
+  pre.code .k{color:#ff8a66}     /* keyword */
+  pre.code .t{color:#2bd4c4}     /* type */
+  pre.code .s{color:#9ece6a}     /* string */
+  pre.code .f{color:#7aa2f7}     /* fn */
+  .term{background:#0a0d14;border:1px solid var(--border);border-radius:12px;overflow:hidden;
+    margin:16px 0;box-shadow:var(--shadow)}
+  .term .bar{display:flex;align-items:center;gap:7px;padding:10px 14px;background:#0f131c;
+    border-bottom:1px solid var(--border)}
+  .term .bar i{width:11px;height:11px;border-radius:50%;display:block}
+  .term .bar .r{background:#ff5f56}.term .bar .y{background:#ffbd2e}.term .bar .g{background:#27c93f}
+  .term .bar .ttl{margin-left:8px;font-family:var(--mono);font-size:.76rem;color:#5d6b80}
+  .term pre{margin:0;padding:16px 18px;overflow-x:auto;font-size:.84rem;line-height:1.7;color:#c9d4e6}
+  .term .p{color:#2bd4c4}          /* prompt */
+  .term .cmd{color:#e6edf3}
+  .term .out{color:#9aa7bd}
+  .term .hl{color:#ff8a66;font-weight:600}
+  .term .ok{color:#3fb950}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px}
+  .card h3{margin:0 0 6px;font-size:1.05rem}
+  .card .lbl{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase}
+  .card.jac .lbl{color:var(--accent)} .card.py .lbl{color:var(--accent-2)}
+
+  figure{margin:22px 0}
+  figure img{width:100%;border-radius:12px;border:1px solid var(--border);display:block;box-shadow:var(--shadow)}
+  figcaption{color:var(--faint);font-size:.82rem;margin-top:8px;text-align:center;font-family:var(--mono)}
+
+  /* scoreboard */
+  table.score{width:100%;border-collapse:collapse;margin-top:18px;font-size:.92rem}
+  table.score th,table.score td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--border)}
+  table.score th{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint)}
+  table.score td.diff{font-family:var(--mono);color:var(--accent);white-space:nowrap}
+  table.score tr:last-child td{border-bottom:none}
+
+  /* insight card */
+  .insight{background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 8%,var(--panel)),var(--panel));
+    border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border));border-radius:14px;padding:22px 24px;margin-top:20px}
+  .insight .who{display:flex;align-items:center;gap:9px;font-size:.8rem;color:var(--accent);
+    font-family:var(--mono);margin-bottom:10px}
+  .insight ul{margin:12px 0 0;padding-left:20px;color:var(--muted)}
+  .insight ul li{margin:4px 0}
+
+  .chartwrap{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px 16px 10px;margin-top:20px}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;font-size:.8rem;color:var(--muted);
+    font-family:var(--mono);padding:6px 0 2px}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:14px;height:3px;border-radius:2px;display:inline-block}
+  .dotm{width:9px;height:9px;border-radius:50%;display:inline-block}
+
+  .callout{border-left:3px solid var(--accent);background:var(--panel);padding:14px 18px;border-radius:0 10px 10px 0;
+    margin:20px 0;color:var(--muted);font-size:.92rem}
+  .callout b{color:var(--text)}
+  footer{border-top:1px solid var(--border);padding:40px 0 60px;color:var(--faint);font-size:.9rem}
+  footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+  @media (max-width:680px){.menu,.grid2{grid-template-columns:1fr}.menu .row:nth-child(odd){border-right:none}
+    .nav nav{display:none}}
+</style>
+</head>
+<body>
+
+<header class="nav"><div class="wrap">
+  <span class="brand"><span class="dot"></span> Pulse</span>
+  <nav>
+    <a href="#build">Build</a><a href="#run">Run</a><a href="#interop">Interop</a>
+    <a href="#targets">Targets</a><a href="#ai">AI</a>
+  </nav>
+  <button class="theme" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">◑</button>
+</div></header>
+
+<div class="hero"><div class="wrap">
+  <div class="eyebrow">A Jac workshop · one source, every target</div>
+  <h1>Build anything.<br><span class="grad">Write it once.</span></h1>
+  <p class="lead">Most frameworks make you pick a lane and marry it. In this workshop you write
+    <b>one</b> small Jac program — <b>Pulse</b> — then walk it down the whole menu. The diff to each
+    target is a flag or a file, not a rewrite.</p>
+  <div class="cta">
+    <a class="btn primary" href="#build">Start the walkthrough →</a>
+    <a class="btn" href="https://github.com/jaseci-labs/the-jac-workshop" target="_blank" rel="noopener">View the repo</a>
+  </div>
+
+  <div class="menucard">
+    <div class="top"><span class="d"></span><span class="d"></span><span class="d"></span>
+      <span class="t">I like to build…</span></div>
+    <div class="menu">
+      <div class="row"><span class="ic">▚</span><b>CLI tools &amp; native binaries</b><span class="tag">shown</span></div>
+      <div class="row"><span class="ic">⇄</span><b>Backend APIs &amp; services</b><span class="tag">shown</span></div>
+      <div class="row"><span class="ic">◱</span><b>Full-stack web apps</b><span class="tag soon">+1 file</span></div>
+      <div class="row"><span class="ic">▢</span><b>Desktop &amp; mobile apps</b><span class="tag soon">+1 flag</span></div>
+      <div class="row"><span class="ic">✦</span><b>AI agents &amp; LLM apps</b><span class="tag">shown</span></div>
+      <div class="row"><span class="ic">◫</span><b>Reusable libraries &amp; packages</b><span class="tag soon">config</span></div>
+    </div>
+  </div>
+</div></div>
+
+<section id="what"><div class="wrap">
+  <h2>What is Pulse?</h2>
+  <p>A tiny metric-anomaly narrator. Feed it a series, find the outliers, and let an LLM explain them.
+    The whole core is ~155 lines of Jac. Its data model is a graph that hangs off your
+    <span class="kbd">root</span> — so it persists, per-user, with <b>no database code</b>.</p>
+
+  <figure>
+    <svg viewBox="0 0 900 150" role="img" aria-label="Data lineage: root to Series to Run to Insight" style="width:100%;border:1px solid var(--border);border-radius:12px;background:var(--panel);padding:6px">
+      <defs>
+        <marker id="arw" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6 Z" fill="var(--faint)"/></marker>
+      </defs>
+      <g font-family="var(--mono)" font-size="13" text-anchor="middle">
+        <g>
+          <circle cx="90" cy="75" r="30" fill="none" stroke="var(--accent)" stroke-width="2"/>
+          <text x="90" y="80" fill="var(--accent)">root</text>
+        </g>
+        <line x1="122" y1="75" x2="196" y2="75" stroke="var(--faint)" stroke-width="1.6" marker-end="url(#arw)"/>
+        <g>
+          <rect x="200" y="48" width="130" height="54" rx="10" fill="var(--panel-2)" stroke="var(--wire)" stroke-width="1.6"/>
+          <text x="265" y="72" fill="var(--text)" font-weight="700">Series</text>
+          <text x="265" y="90" fill="var(--faint)" font-size="10.5">name · points[]</text>
+        </g>
+        <line x1="332" y1="75" x2="406" y2="75" stroke="var(--faint)" stroke-width="1.6" marker-end="url(#arw)"/>
+        <g>
+          <rect x="410" y="48" width="130" height="54" rx="10" fill="var(--panel-2)" stroke="var(--wire)" stroke-width="1.6"/>
+          <text x="475" y="72" fill="var(--text)" font-weight="700">Run</text>
+          <text x="475" y="90" fill="var(--faint)" font-size="10.5">anomalies[]</text>
+        </g>
+        <line x1="542" y1="75" x2="616" y2="75" stroke="var(--faint)" stroke-width="1.6" marker-end="url(#arw)"/>
+        <g>
+          <rect x="620" y="48" width="140" height="54" rx="10" fill="var(--panel-2)" stroke="color-mix(in srgb,var(--accent) 45%,var(--wire))" stroke-width="1.6"/>
+          <text x="690" y="72" fill="var(--text)" font-weight="700">Insight</text>
+          <text x="690" y="90" fill="var(--accent)" font-size="10.5">by llm ✦</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption>root ──▶ Series ──▶ Run ──▶ Insight &nbsp;·&nbsp; the graph is the schema, the API, and the persistence</figcaption>
+  </figure>
+</div></section>
+
+<section id="build"><div class="wrap">
+  <div class="step-badge"><span class="n">1</span> The core</div>
+  <h2>Three nodes, a few walkers</h2>
+  <p>A <b>walker</b> is Pulse's unit of API. The same walker is a CLI subcommand, a REST endpoint,
+    and a call from the frontend — you write it once. Here's the anomaly scan: a z-score, in plain Jac.</p>
+
+  <pre class="code"><span class="c"># the graph model — anything hung off root auto-persists, per user</span>
+<span class="k">node</span> <span class="t">Series</span>  { <span class="k">has</span> name: <span class="t">str</span>; <span class="k">has</span> points: <span class="t">list</span>[<span class="t">float</span>] = []; }
+<span class="k">node</span> <span class="t">Run</span>     { <span class="k">has</span> anomalies: <span class="t">list</span>[<span class="t">int</span>] = []; <span class="k">has</span> values: <span class="t">list</span>[<span class="t">float</span>] = []; }
+<span class="k">node</span> <span class="t">Insight</span> { <span class="k">has</span> summary: <span class="t">str</span> = <span class="s">""</span>; <span class="k">has</span> bullets: <span class="t">list</span>[<span class="t">str</span>] = []; }
+
+<span class="c"># AI as a typed function — the signature IS the prompt, no template strings</span>
+<span class="k">def</span> <span class="f">write_insight</span>(name: <span class="t">str</span>, count: <span class="t">int</span>, flagged: <span class="t">list</span>[<span class="t">float</span>]) -> <span class="t">InsightText</span> <span class="k">by llm</span>();
+
+<span class="c"># one walker = CLI subcommand + REST endpoint + frontend RPC</span>
+<span class="k">walker</span>:<span class="k">pub</span> <span class="t">scan</span> {
+    <span class="k">has</span> series: <span class="t">str</span>;
+    <span class="k">has</span> threshold: <span class="t">float</span> = 2.5;
+    <span class="k">can</span> run <span class="k">with</span> <span class="t">Root</span> <span class="k">entry</span> {
+        s = [--&gt;][?:<span class="t">Series</span>, name == <span class="k">self</span>.series][0];
+        vals = s.points;
+        m = <span class="f">sum</span>(vals) / <span class="f">len</span>(vals);
+        std = (<span class="f">sum</span>([(v - m) ** 2 <span class="k">for</span> v <span class="k">in</span> vals]) / <span class="f">len</span>(vals)) ** 0.5;
+        idx = [i <span class="k">for</span> (i, v) <span class="k">in</span> <span class="f">enumerate</span>(vals) <span class="k">if</span> <span class="f">abs</span>((v - m) / std) &gt; <span class="k">self</span>.threshold];
+        run = <span class="t">Run</span>(anomalies=idx, values=[vals[i] <span class="k">for</span> i <span class="k">in</span> idx]);
+        s ++&gt; run;
+        <span class="k">report</span> {<span class="s">"anomalies"</span>: <span class="f">len</span>(idx), <span class="s">"indices"</span>: idx};
+    }
+}</pre>
+  <p class="muted">No ORM. No route decorators. No request parsing. The walker's <span class="kbd">has</span>
+    fields are the request body; its <span class="kbd">report</span> is the response.</p>
+</div></section>
+
+<section id="run"><div class="wrap">
+  <div class="step-badge"><span class="n">2</span> Run it — from the CLI, zero extra code</div>
+  <h2>Every walker is already a command</h2>
+  <p>No argument parser to write: <span class="kbd">jac enter &lt;file&gt; &lt;walker&gt; &lt;args…&gt;</span> invokes any
+    walker. The graph <b>persists between calls</b> — seed once, scan later — because it lives on
+    <span class="kbd">root</span>. This is the actual output, captured live:</p>
+
+  <div class="term">
+    <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="ttl">pulse — jac enter</span></div>
+<pre><span class="p">$</span> <span class="cmd">jac enter src/main.jac seed</span>
+<span class="out">{'name': 'orders', 'points': 90}</span>
+
+<span class="p">$</span> <span class="cmd">jac enter src/main.jac scan orders</span>
+<span class="out">{'run': 'e3897860…', 'anomalies': <span class="hl">4</span>, 'indices': <span class="hl">[30, 31, 32, 55]</span>}</span>
+
+<span class="p">$</span> <span class="cmd">jac enter src/main.jac forecast orders 14</span>
+<span class="out">{'slope': 0.693, 'intercept': 224.4,
+ 'forecast': [286.7, 287.4, 288.1, 288.8, 289.5, …]}</span></pre>
+  </div>
+
+  <p class="muted">The z-score flagged indices <span class="kbd">[30, 31, 32, 55]</span> — exactly the anomalies
+    seeded into the series: a 3-day spike (30–32) and a 1-day dip (55). Here's what that looks like:</p>
+
+  <div class="chartwrap">
+    <canvas id="chart" height="300" style="width:100%;display:block"></canvas>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--wire)"></span> orders (seeded series)</span>
+      <span><span class="dotm" style="background:var(--danger)"></span> anomaly (flagged by scan)</span>
+      <span><span class="sw" style="background:var(--accent-2);height:0;border-top:2px dashed var(--accent-2)"></span> forecast (linear_regression)</span>
+    </div>
+  </div>
+</div></section>
+
+<section id="interop"><div class="wrap">
+  <div class="step-badge"><span class="n">3</span> The interop moment</div>
+  <h2>Import any Python library, right into your Jac</h2>
+  <p>Jac can do real work by itself — that z-score was pure Jac. And when a library helps, you
+    <b>import it directly into the same <span class="kbd">.jac</span> file</b> and call it inline. One import,
+    no service, no wrapper, no glue. Both of these live side by side in Pulse:</p>
+
+  <div class="grid2">
+    <div class="card jac">
+      <div class="lbl">scan · pure Jac</div>
+      <h3>No library needed</h3>
+      <pre class="code" style="margin:10px 0 0;font-size:.8rem"><span class="c"># mean / std / z-score,</span>
+<span class="c"># written in Jac itself</span>
+m = <span class="f">sum</span>(vals) / <span class="f">len</span>(vals);
+std = (<span class="f">sum</span>([(v-m)**2 …]))**0.5;
+z  = <span class="f">abs</span>((v - m) / std);</pre>
+    </div>
+    <div class="card py">
+      <div class="lbl">forecast · imported lib</div>
+      <h3>Interop, inline</h3>
+      <pre class="code" style="margin:10px 0 0;font-size:.8rem"><span class="k">import from</span> statistics {
+    linear_regression }
+
+<span class="c"># used in the same file</span>
+fit = <span class="f">linear_regression</span>(x, y);
+slope = fit.slope;</pre>
+    </div>
+  </div>
+  <div class="callout"><b>The precise claim.</b> "Python interop" means <span class="kbd">import from &lt;lib&gt;</span>
+    <i>inside a <span class="kbd">.jac</span> file</i> — <span class="kbd">numpy</span>, <span class="kbd">pandas</span>, anything —
+    used in the same file with no glue. Swap <span class="kbd">statistics</span> for <span class="kbd">pandas</span>
+    (declare it in <span class="kbd">jac.toml</span>) and it's the identical line. That's the whole boundary.</div>
+</div></section>
+
+<section id="ai"><div class="wrap">
+  <div class="step-badge"><span class="n">4</span> AI as a language primitive</div>
+  <h2>The LLM writes an Insight — and it's typed</h2>
+  <p>The <span class="kbd">narrate</span> walker hands the run's numbers to <span class="kbd">write_insight … by llm()</span>.
+    No prompt template, no JSON re-parsing: inputs and the returned <span class="kbd">Insight</span> are Jac types.
+    This is a <b>real</b> response (Claude Haiku 4.5), captured from the running app:</p>
+
+  <div class="term">
+    <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="ttl">pulse — narrate orders</span></div>
+<pre><span class="p">$</span> <span class="cmd">jac enter src/main.jac narrate orders</span></pre>
+  </div>
+  <div class="insight">
+    <div class="who">✦ Insight · authored by llm</div>
+    <div><b>Detected 4 anomalies in the orders series</b> with flagged values including three
+      consecutive values (630.0, 631.0, 632.0) and one outlier (20.0).</div>
+    <ul>
+      <li>4 total anomalies detected in orders data</li>
+      <li>Three consecutive anomalous values: 630.0, 631.0, 632.0</li>
+      <li>One significant outlier value: 20.0</li>
+      <li>Anomalies may indicate data quality issues or unusual business patterns</li>
+    </ul>
+  </div>
+</div></section>
+
+<section id="targets"><div class="wrap">
+  <div class="step-badge"><span class="n">5</span> Fan out to every target</div>
+  <h2>Same core. The diff is a flag or a file.</h2>
+  <p>Here's the scoreboard. The core never changes — each target is a thin shell around it.</p>
+  <table class="score">
+    <thead><tr><th>Target</th><th>The diff</th><th>Why it lands</th></tr></thead>
+    <tbody>
+      <tr><td>CLI + native binary</td><td class="diff">+ 0 lines</td><td class="muted"><span class="kbd">jac enter</span> · <span class="kbd">jac nacompile</span> → a binary with no Python runtime</td></tr>
+      <tr><td>Backend REST API</td><td class="diff">already there</td><td class="muted"><span class="kbd">:pub</span> walkers become per-user endpoints; SQLite root, JWT auth, no ORM</td></tr>
+      <tr><td>Full-stack web app</td><td class="diff">+ 1 file</td><td class="muted">a <span class="kbd">.cl.jac</span> page calling <span class="kbd">scan</span> via <span class="kbd">root() spawn</span> — no CORS, no fetch</td></tr>
+      <tr><td>Desktop / mobile</td><td class="diff">+ 1 flag</td><td class="muted"><span class="kbd">--client desktop</span> — OS webview, no Electron</td></tr>
+      <tr><td>AI agent</td><td class="diff">walkers = tools</td><td class="muted">an LLM drives your walkers; the app <i>is</i> the toolset</td></tr>
+      <tr><td>Reusable package</td><td class="diff">config</td><td class="muted"><span class="kbd">jac bundle</span> / wheel — ship the core to others</td></tr>
+    </tbody>
+  </table>
+  <p class="muted" style="margin-top:22px">Six targets off the menu. One core. No rewrites — and when you
+    need the heavy Python ecosystem (<span class="kbd">pandas</span>, <span class="kbd">statsmodels</span>),
+    the <a href="https://github.com/jaseci-labs/the-jac-workshop/tree/main/metrics-workbench">capstone</a>
+    scales the same patterns.</p>
+</div></section>
+
+<footer><div class="wrap">
+  <div>Pulse · a Jac workshop walkthrough<br><span style="color:var(--muted)">Every command &amp; output on this page was captured from the running app.</span></div>
+  <div style="text-align:right">
+    <a href="https://github.com/jaseci-labs/the-jac-workshop">the-jac-workshop ↗</a><br>
+    <a href="https://www.jac-lang.org" target="_blank" rel="noopener">jac-lang.org ↗</a>
+  </div>
+</div></footer>
+
+<script>
+  // theme toggle (persisted)
+  (function(){
+    var r=document.documentElement, b=document.getElementById('themeBtn');
+    var saved=localStorage.getItem('pulse-theme'); if(saved) r.setAttribute('data-theme',saved);
+    b.addEventListener('click',function(){
+      var next=r.getAttribute('data-theme')==='light'?'dark':'light';
+      r.setAttribute('data-theme',next); localStorage.setItem('pulse-theme',next); draw();
+    });
+  })();
+
+  // anomaly chart — replicates seed() exactly, then overlays scan + forecast
+  function series(){
+    var v=[]; for(var i=0;i<90;i++){var b=200+i; if(i>=30&&i<33)b+=400; if(i===55)b=20; v.push(b);} return v;
+  }
+  function cssvar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+  function draw(){
+    var c=document.getElementById('chart'); if(!c) return;
+    var dpr=window.devicePixelRatio||1, W=c.clientWidth, H=300;
+    c.width=W*dpr; c.height=H*dpr; var x=c.getContext('2d'); x.scale(dpr,dpr);
+    x.clearRect(0,0,W,H);
+    var data=series(), anom=[30,31,32,55], padL=8,padR=8,padT=14,padB=8;
+    var min=0,max=660, n=data.length;
+    var px=function(i){return padL+(i/(n-1))*(W-padL-padR);};
+    var py=function(v){return padT+(1-(v-min)/(max-min))*(H-padT-padB);};
+    // grid
+    x.strokeStyle=cssvar('--border'); x.lineWidth=1;
+    for(var g=0;g<=3;g++){var yy=padT+g/3*(H-padT-padB); x.beginPath();x.moveTo(padL,yy);x.lineTo(W-padR,yy);x.stroke();}
+    // forecast trend (linear_regression slope/intercept from the real run), dashed
+    var slope=0.693, icept=224.4;
+    x.strokeStyle=cssvar('--accent-2'); x.lineWidth=2; x.setLineDash([6,5]); x.beginPath();
+    x.moveTo(px(0),py(icept)); x.lineTo(px(n-1),py(icept+slope*(n-1))); x.stroke(); x.setLineDash([]);
+    // series line
+    x.strokeStyle=cssvar('--wire'); x.lineWidth=2; x.beginPath();
+    data.forEach(function(v,i){ i?x.lineTo(px(i),py(v)):x.moveTo(px(i),py(v)); }); x.stroke();
+    // anomaly points
+    var dg=cssvar('--danger');
+    anom.forEach(function(i){
+      x.fillStyle=dg; x.beginPath(); x.arc(px(i),py(data[i]),5,0,7); x.fill();
+      x.strokeStyle=cssvar('--bg'); x.lineWidth=2; x.stroke();
+    });
+  }
+  window.addEventListener('resize',draw); draw();
+</script>
+</body>
+</html>
