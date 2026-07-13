@@ -101,6 +101,19 @@ walker:pub list_series {
     }
 }
 
+# Return a series' raw points (used by the web client to draw the chart).
+walker:pub series_points {
+    has series: str;
+    can run with Root entry {
+        matches = [-->][?:Series, name == self.series];
+        if not matches {
+            report {"points": []};
+            disengage;
+        }
+        report {"points": matches[0].points};
+    }
+}
+
 # z-score anomaly detection, written in plain Jac (no pandas, no pyod).
 walker:pub scan {
     has series: str;

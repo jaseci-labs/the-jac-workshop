@@ -162,7 +162,7 @@
   <span class="brand"><span class="dot"></span> Pulse</span>
   <nav>
     <a href="#build">Build</a><a href="#run">Run</a><a href="#interop">Interop</a>
-    <a href="#targets">Targets</a><a href="#ai">AI</a>
+    <a href="#ai">AI</a><a href="#web">Web</a><a href="#targets">Targets</a>
   </nav>
   <button class="theme" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">◑</button>
 </div></header>
@@ -184,7 +184,7 @@
     <div class="menu">
       <div class="row"><span class="ic">▚</span><b>CLI tools &amp; native binaries</b><span class="tag">shown</span></div>
       <div class="row"><span class="ic">⇄</span><b>Backend APIs &amp; services</b><span class="tag">shown</span></div>
-      <div class="row"><span class="ic">◱</span><b>Full-stack web apps</b><span class="tag soon">+1 file</span></div>
+      <div class="row"><span class="ic">◱</span><b>Full-stack web apps</b><span class="tag">shown</span></div>
       <div class="row"><span class="ic">▢</span><b>Desktop &amp; mobile apps</b><span class="tag soon">+1 flag</span></div>
       <div class="row"><span class="ic">✦</span><b>AI agents &amp; LLM apps</b><span class="tag">shown</span></div>
       <div class="row"><span class="ic">◫</span><b>Reusable libraries &amp; packages</b><span class="tag soon">config</span></div>
@@ -275,13 +275,13 @@
 
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="ttl">pulse — jac enter</span></div>
-<pre><span class="p">$</span> <span class="cmd">jac enter src/main.jac seed</span>
+<pre><span class="p">$</span> <span class="cmd">jac enter main.jac seed</span>
 <span class="out">{'name': 'orders', 'points': 90}</span>
 
-<span class="p">$</span> <span class="cmd">jac enter src/main.jac scan orders</span>
+<span class="p">$</span> <span class="cmd">jac enter main.jac scan orders</span>
 <span class="out">{'run': 'e3897860…', 'anomalies': <span class="hl">4</span>, 'indices': <span class="hl">[30, 31, 32, 55]</span>}</span>
 
-<span class="p">$</span> <span class="cmd">jac enter src/main.jac forecast orders 14</span>
+<span class="p">$</span> <span class="cmd">jac enter main.jac forecast orders 14</span>
 <span class="out">{'slope': 0.693, 'intercept': 224.4,
  'forecast': [286.7, 287.4, 288.1, 288.8, 289.5, …]}</span></pre>
   </div>
@@ -342,7 +342,7 @@ slope = fit.slope;</pre>
 
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="ttl">pulse — narrate orders</span></div>
-<pre><span class="p">$</span> <span class="cmd">jac enter src/main.jac narrate orders</span></pre>
+<pre><span class="p">$</span> <span class="cmd">jac enter main.jac narrate orders</span></pre>
   </div>
   <div class="insight">
     <div class="who">✦ Insight · authored by llm</div>
@@ -357,8 +357,33 @@ slope = fit.slope;</pre>
   </div>
 </div></section>
 
+<section id="web"><div class="wrap">
+  <div class="step-badge"><span class="n">5</span> Full-stack web — +1 file</div>
+  <h2>The same walkers, now a web app</h2>
+  <p>Add one <span class="kbd">.cl.jac</span> page — a component compiled to React — that
+    <span class="kbd">sv import</span>s the walkers and calls them with <span class="kbd">root spawn</span>.
+    No <span class="kbd">fetch</span>, no CORS, no request schema retyped as TypeScript. UI state lives
+    in reactive <span class="kbd">has</span> fields. One command builds the client and serves the API together:</p>
+
+  <div class="term">
+    <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="ttl">pulse — jac start --dev</span></div>
+<pre><span class="p">$</span> <span class="cmd">jac start --dev main.jac</span>
+<span class="out">Gateway starting on <span class="hl">http://localhost:8000</span>
+<span class="ok">✔</span> Initial client compilation completed</span></pre>
+  </div>
+
+  <figure>
+    <img src="assets/pulse-web.png" alt="Pulse full-stack web dashboard: line chart with the spike and dip flagged red, and an LLM-authored Insight card">
+    <figcaption>Live screenshot — chart, Scan / Forecast / Narrate, and the LLM Insight are all driven by the same walkers as the CLI</figcaption>
+  </figure>
+
+  <p class="muted">Click <b>Narrate</b> and the browser calls the <span class="kbd">narrate</span> walker over
+    HTTP → Claude writes a typed <span class="kbd">Insight</span> → the card renders it. Exactly the same
+    code path as <span class="kbd">jac enter main.jac narrate orders</span> — one walker, two front doors.</p>
+</div></section>
+
 <section id="targets"><div class="wrap">
-  <div class="step-badge"><span class="n">5</span> Fan out to every target</div>
+  <div class="step-badge"><span class="n">6</span> Fan out to every target</div>
   <h2>Same core. The diff is a flag or a file.</h2>
   <p>Here's the scoreboard. The core never changes — each target is a thin shell around it.</p>
   <table class="score">

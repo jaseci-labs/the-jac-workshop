@@ -13,9 +13,11 @@ and **one source that compiles to every build target with a near-zero diff.**
 
 | Piece | State |
 |---|---|
-| `pulse/` — the slim **live-build** (Jac-first) | ✅ **built & verified running** — `seed → scan → forecast → narrate` |
+| `pulse/` — the slim **live-build** (Jac-first) | ✅ **built & verified running** — CLI `seed → scan → forecast → narrate` + full-stack web |
+| **Full-stack web target** | ✅ **built, runs, screenshotted** — `jac start --dev main.jac` → dashboard + real LLM Insight |
+| Live walkthrough site (GitHub Pages) | ✅ **published** → https://jaseci-labs.github.io/the-jac-workshop/ |
 | `metrics-workbench/` — the **capstone** (heavy-lib showcase) | ✅ present (merged from `main`); backend + CLI + agentic AI |
-| Web / desktop / package targets for Pulse | ⬜ to build (small: a page, a flag, config) |
+| Desktop / package targets for Pulse | ⬜ documented (a flag / config away) — not yet screenshotted |
 
 **Verified end-to-end (via `jac enter`):**
 - `scan` — the z-score, written in **pure Jac**, flagged `indices [30, 31, 32, 55]`:
@@ -161,7 +163,7 @@ Demote Desktop, Agent, Package to a 90-second "flag montage." See §11.
 
 ## 5. The core (real, validated code)
 
-Lives in [pulse/src/main.jac](pulse/src/main.jac). Compiles clean; runs. The
+Lives in [pulse/api.jac](pulse/api.jac). Compiles clean; runs. The
 three teaching moments live here and **never change again** — every target in
 §6 is a shell around this file.
 
@@ -225,33 +227,41 @@ Show these as literal `git diff`-style reveals. The point is the smallness.
 
 ### 6.1 CLI + native binary — *diff: 0 lines*
 ```bash
-jac enter src/main.jac seed              # → {'name': 'orders', 'points': 90}
-jac enter src/main.jac scan orders       # → {'anomalies': 4, 'indices': [30, 31, 32, 55]}
-jac enter src/main.jac forecast orders 14 # → linear_regression imported inline (interop)
-jac enter src/main.jac narrate orders
-jac nacompile src/main.jac               # → single native binary, no Python needed
+jac enter main.jac seed              # → {'name': 'orders', 'points': 90}
+jac enter main.jac scan orders       # → {'anomalies': 4, 'indices': [30, 31, 32, 55]}
+jac enter main.jac forecast orders 14 # → linear_regression imported inline (interop)
+jac enter main.jac narrate orders
+jac nacompile main.jac               # → single native binary, no Python needed
 ```
 **Beat:** "This runs in CI on a box with no Python installed."
 
 ### 6.2 Backend API — *already there (add `:priv` for per-user)*
 The walkers are already `:pub`. Start the server:
 ```bash
-jac start src/main.jac
+jac start --dev main.jac
 curl -X POST .../walker/scan -d '{"series":"orders"}'
 ```
-Every walker is a REST endpoint. Switch `:pub`→`:priv` and register two users →
-**each sees only their own `Series`**. No auth-scoping code, no `WHERE user_id`,
-no ORM. **This is the slide enterprise architects photograph.**
+Every walker is a REST endpoint (verified: `POST /walker/scan` → `200`). Switch
+`:pub`→`:priv` and register two users → **each sees only their own `Series`**.
+No auth-scoping code, no `WHERE user_id`, no ORM. **This is the slide enterprise
+architects photograph.**
 
-### 6.3 Full-stack web — *diff: 1 file*
-Add one `.cl.jac` page: an ECharts chart (**JS interop**) and two buttons that
-call `scan` / `narrate` via `root() spawn` (`sv import` from `main`). No `fetch`,
-no CORS, no Pydantic-model-retyped-as-a-TS-interface.
+### 6.3 Full-stack web — *diff: 1 file · ✅ BUILT*
+Add one `.cl.jac` page ([pulse/web.cl.jac](pulse/web.cl.jac)) that `sv import`s
+the walkers and calls `scan` / `forecast` / `narrate` via `root spawn`. No
+`fetch`, no CORS, no Pydantic-model-retyped-as-a-TS-interface. UI state is
+reactive `has` fields; the chart is SVG built from the same data the CLI prints.
 ```bash
-jac start src/main.jac --client web
+jac start --dev main.jac         # → http://localhost:8000
 ```
-**Beat:** click **Narrate** — same walker as the CLI, now in a browser,
-returning a typed object the JSX renders directly.
+**Verified running** — screenshot in the walkthrough. Click **Narrate** and the
+browser calls the same `narrate` walker → Claude writes a typed `Insight` → the
+card renders it. One walker, two front doors.
+
+> Layout note: the fullstack build wants flat root modules — walkers live in
+> `api.jac`, the entry+mount in `main.jac`, the client in `web.cl.jac` /
+> `web.impl.jac`. Jac JSX has no SVG intrinsics, so the chart is built as an SVG
+> string and injected with `dangerouslySetInnerHTML`.
 
 ### 6.4 Desktop / mobile — *diff: 1 flag*
 ```bash
@@ -366,11 +376,16 @@ you're just not building them live.
 
 ## 12. Remaining to-do (before the workshop is turnkey)
 
-- ⬜ **Web target** — the `.cl.jac` page (ECharts + Scan/Narrate buttons).
-- ⬜ **Desktop/package targets** — flags + `jac.toml` config; verify the builds.
-- ⬜ **MockLLM** — wire the exact config so `narrate` works offline by default.
+- ✅ **Web target** — `web.cl.jac` dashboard, built, running, screenshotted.
+- ✅ **Walkthrough site** — published to GitHub Pages, auto-deploys on push.
+- ✅ **narrate verified** — real Claude Haiku 4.5 output (CLI + browser).
+- ⬜ **Desktop target** — `jac create --kind desktop` scaffolds it; `jac build
+  --client desktop` needs a display to screenshot (not headless-friendly).
+- ⬜ **Package target** — `jac bundle` / wheel; produces an artifact, easy to add.
+- ⬜ **MockLLM** — wire the exact config so `narrate` works offline by default
+  (a real key is present in this env, so narrate works today; Mock is the
+  airgapped fallback).
 - ⬜ **Per-target git branches** — one tag per target so `git diff` is the reveal.
-- ⬜ Confirm `jac nacompile` / `--client desktop` verbs on the workshop Jac build.
 
 ---
 
