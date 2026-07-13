@@ -4,6 +4,30 @@ Each method calls a server walker with `root spawn` and drops the result into
 reactive state; `chart_data` shapes the series for recharts.
 """
 
+impl app.do_auth -> None {
+    authbusy = True;
+    autherr = "";
+    sr: dict | None = None;   # jacSignup returns a dict
+    ok: bool = False;         # jacLogin returns a bool
+    if authmode == "signup" {
+        sr = await jacSignup(email, password);
+        if not sr["success"] {
+            autherr = "Sign-up failed (the email may already be in use)";
+            authbusy = False;
+            return;
+        }
+    }
+    ok = await jacLogin(email, password);
+    if not ok {
+        autherr = "Invalid credentials";
+        authbusy = False;
+        return;
+    }
+    authed = True;
+    authbusy = False;
+    boot();   # first authenticated call — loads this user's own data
+}
+
 impl app.boot -> None {
     r = root spawn dashboard(series="orders");
     pts = r.reports[0]["points"];

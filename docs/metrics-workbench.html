@@ -88,7 +88,7 @@
   <span class="brand"><span class="dot"></span> Metrics Workbench</span>
   <nav>
     <a href="index.html">← Walkthrough</a>
-    <a href="#interop">Interop</a><a href="#ai">AI</a><a href="#cli">CLI</a>
+    <a href="#interop">Interop</a><a href="#ai">AI</a><a href="#cli">CLI</a><a href="#auth">Auth</a>
     <a href="https://github.com/jaseci-labs/the-jac-workshop/tree/main/metrics-workbench" target="_blank" rel="noopener">Source ↗</a>
   </nav>
 </div></header>
@@ -105,6 +105,7 @@
     <span class="pill"><b>pyod</b> IForest</span>
     <span class="pill"><b>statsmodels</b> SARIMAX</span>
     <span class="pill"><b>by llm</b> insight + suggestions + agent</span>
+    <span class="pill"><b>per-user root</b> auth + persistence</span>
     <span class="pill">129,600 rows</span>
   </div>
 
@@ -198,6 +199,48 @@ sharply toward late July — caution for longer-term predictions.</span></pre>
   </div>
 </div></section>
 
+<section id="auth"><div class="wrap">
+  <h2>Auth &amp; persistence — a layer, not a rewrite</h2>
+  <p>The workbench ingests 129,600 rows through pandas — but the <b>results</b> it keeps
+    (<span class="kbd">Dataset → Metric → AnalysisRun → Insight</span>) are nodes hung off
+    <span class="kbd">root</span>, so they <b>persist automatically</b> on SQLite. No schema, no migration, no ORM.
+    Auth is the same graph seen through one more lens: <b>each user gets their own <span class="kbd">root</span></b>, so
+    the same walker runs against a private workbench per person.</p>
+
+  <p>The change is one keyword. A <span class="kbd">:pub</span> walker runs on a single shared guest graph;
+    drop the <span class="kbd">:pub</span> and the walker demands a JWT and runs on <b>the caller's</b> root —
+    there is no <span class="kbd">user_id</span> to pass and no <span class="kbd">WHERE owner = ?</span> to write.</p>
+
+  <pre class="code"><span class="c"># BEFORE — one shared graph; every visitor saw the same datasets.</span>
+<span class="k">walker</span>:<span class="k">pub</span> <span class="t">wb_dashboard</span> { ... }
+
+<span class="c"># AFTER — drop :pub. JWT required; each caller runs on their OWN root.</span>
+<span class="c"># :protect = auth + own root, still importable by the .cl.jac web client.</span>
+<span class="c"># Only :pub ever skips auth — it's the one visibility that does.</span>
+<span class="k">walker</span>:<span class="k">protect</span> <span class="t">wb_dashboard</span> { ... }   <span class="c"># body unchanged: pandas + pyod + SARIMAX</span></pre>
+
+  <p>The client puts a login gate in front of the dashboard — three helpers from
+    <span class="kbd">@jac/runtime</span>, no token wiring:</p>
+
+  <pre class="code"><span class="c"># web.cl.jac</span>
+<span class="k">import from</span> <span class="s">"@jac/runtime"</span> { jacLogin, jacSignup, jacIsLoggedIn }
+
+<span class="k">if</span> <span class="k">not</span> authed {                     <span class="c"># authed = jacIsLoggedIn() at mount</span>
+    <span class="k">return</span> &lt;<span class="t">LoginCard</span> /&gt;;           <span class="c"># email + password → jacLogin → your own root</span>
+}
+<span class="c"># ...boot() then runs `root spawn wb_dashboard()` against YOUR datasets only.</span></pre>
+
+  <figure>
+    <img src="assets/mw-login.png" alt="Metrics Workbench login card — database icon, email and password fields, 'your datasets live on your own graph'">
+    <figcaption>The gate — sign in, and every pandas / pyod / SARIMAX walker call lands on <b>your</b> root</figcaption>
+  </figure>
+
+  <div class="callout"><b>Verified per-user isolation.</b> Sign in as one user, seed a dataset, sign in as
+    another — the graphs never cross. Each login returns a distinct <span class="kbd">root_id</span>; a walker
+    call with no token is rejected <span class="kbd">401</span>. Same walkers, same file — the database and the
+    auth layer <b>are</b> the graph.</div>
+</div></section>
+
 <section id="targets"><div class="wrap">
   <h2>One source · the whole menu</h2>
   <p>Like Pulse, the workbench compiles to every build target — it's just carrying a heavier engine.</p>
@@ -205,10 +248,11 @@ sharply toward late July — caution for longer-term predictions.</span></pre>
     <thead><tr><th>Showcase point</th><th>How the capstone does it</th></tr></thead>
     <tbody>
       <tr><td class="k">Python interop</td><td class="muted">pandas + pyod + statsmodels imported into <span class="kbd">api.jac</span> via <span class="kbd">analytics.py</span></td></tr>
-      <tr><td class="k">Native DB / graph</td><td class="muted">Dataset → Metric → AnalysisRun → Insight, per-user <span class="kbd">root</span>, no ORM</td></tr>
+      <tr><td class="k">Native DB / graph</td><td class="muted">Dataset → Metric → AnalysisRun → Insight auto-persist on <span class="kbd">root</span> (SQLite), no ORM</td></tr>
+      <tr><td class="k">Auth + per-user data</td><td class="muted">drop <span class="kbd">:pub</span> → JWT + each user's own <span class="kbd">root</span>; login gate via <span class="kbd">@jac/runtime</span> (<a href="#auth">above</a>)</td></tr>
       <tr><td class="k">AI as a primitive</td><td class="muted">3× <span class="kbd">by llm</span>: narrate, suggest_metrics, and an agentic <span class="kbd">investigate</span> walker</td></tr>
       <tr><td class="k">Full-stack web</td><td class="muted">a <span class="kbd">.cl.jac</span> recharts dashboard calling the walkers via <span class="kbd">root spawn</span> (above)</td></tr>
-      <tr><td class="k">REST API</td><td class="muted"><span class="kbd">:pub</span> walkers → per-user endpoints (<span class="kbd">POST /walker/wb_dashboard</span>)</td></tr>
+      <tr><td class="k">REST API</td><td class="muted">authenticated walkers → per-user endpoints (<span class="kbd">POST /walker/wb_dashboard</span>)</td></tr>
       <tr><td class="k">CLI</td><td class="muted"><span class="kbd">jac run api.jac &lt;cmd&gt;</span> — ingest, anomaly, forecast, narrate, investigate, summary, lineage</td></tr>
     </tbody>
   </table>

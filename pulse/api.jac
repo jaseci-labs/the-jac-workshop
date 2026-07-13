@@ -117,7 +117,9 @@ walker:pub series_points {
 # One-shot: seed-if-empty + z-score, all in a single walker (one root context).
 # The web client's boot uses this so a fresh graph populates in one call
 # (the desktop in-process runtime doesn't share graph state across spawns).
-walker:pub dashboard {
+# `:protect` = JWT-authenticated + per-user: it seeds and reads the CALLER's
+# OWN root, so each signed-in user gets their own private series.
+walker:protect dashboard {
     has series: str = "orders";
     can run with Root entry {
         matches = [-->][?:Series, name == self.series];
@@ -192,7 +194,7 @@ walker:pub scan {
 
 # Interop showcase: a least-squares trend projection, with numpy doing the math
 # inline. Same file as the pure-Jac scan above - no glue between the two.
-walker:pub forecast {
+walker:protect forecast {
     has series: str;
     has horizon: int = 14;
 
@@ -220,7 +222,7 @@ walker:pub forecast {
 }
 
 # Hand the latest run's numbers to the LLM; store its prose as an Insight node.
-walker:pub narrate {
+walker:protect narrate {
     has series: str;
 
     can run with Root entry {

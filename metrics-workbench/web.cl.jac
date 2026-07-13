@@ -1,13 +1,15 @@
 """Metrics Workbench — client dashboard (compiled from Jac to React).
 
 `sv import` pulls the server walkers in as typed client calls; `root spawn`
-invokes them over HTTP. The numbers behind the chart come from pandas /
-pyod / statsmodels running server-side (analytics.py). The chart is
-`recharts`; icons are `lucide-react`.
+invokes them over HTTP. The walkers are `:priv`, so the client must be logged
+in — and each user then runs against their own isolated `root` (per-user
+persistence, no auth-scoping code). The numbers come from pandas / pyod /
+statsmodels server-side (analytics.py); the chart is `recharts`.
 """
 
 import from "recharts" { ResponsiveContainer, ComposedChart, Line, Scatter, Area, XAxis, YAxis, CartesianGrid, Tooltip }
-import from "lucide-react" { Database, TriangleAlert, Sparkles, Lightbulb, ScanSearch }
+import from "lucide-react" { Database, TriangleAlert, Sparkles, Lightbulb, LogOut }
+import from "@jac/runtime" { jacLogin, jacSignup, jacLogout, jacIsLoggedIn }
 
 sv import from api { wb_seed, wb_dashboard, wb_narrate, wb_suggest }
 
@@ -21,10 +23,19 @@ glob CSS = """
   .stat .v{font-size:1.7rem;font-weight:700;letter-spacing:-.02em;line-height:1;}
   .stat .l{font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:#5d6b80;margin-top:7px;font-family:ui-monospace,monospace;}
   .card{background:#10141d;border:1px solid #232a36;border-radius:16px;padding:20px 22px;margin-top:18px;}
+  .mw-in{width:100%;padding:11px 13px;border-radius:10px;border:1px solid #2b3444;background:#0c0f16;color:#e6edf3;font-size:.95rem;outline:none;transition:border-color .15s;}
+  .mw-in:focus{border-color:#7c5cff;}
+  .lnk{color:#9d7bff;cursor:pointer;font-weight:600;}
 """;
 
 def:pub app -> JsxElement {
-    has chart: list = [],
+    has authed: bool = jacIsLoggedIn(),
+        email: str = "",
+        password: str = "",
+        authmode: str = "login",
+        autherr: str = "",
+        authbusy: bool = False,
+        chart: list = [],
         anomaly_count: int = 0,
         point_count: int = 0,
         aic: float = 0.0,
@@ -35,13 +46,53 @@ def:pub app -> JsxElement {
         busy: bool = False;
 
     can with entry {
-        boot();
+        if authed {
+            boot();
+        }
     }
 
+    async def do_auth -> None;
     async def boot -> None;
     async def do_narrate -> None;
     async def do_suggest -> None;
 
+    # ---- unauthenticated: login / sign-up gate ----
+    if not authed {
+        return
+            <div style={{
+                "minHeight": "100vh", "display": "grid", "placeItems": "center",
+                "background": "radial-gradient(120% 90% at 50% -10%, #16131f 0%, #0b0d13 55%)",
+                "color": "#e6edf3", "fontFamily": "system-ui, -apple-system, Segoe UI, sans-serif"
+            }}>
+                <style>{CSS}</style>
+                <div style={{"width": "360px", "maxWidth": "90vw", "background": "#11141d", "border": "1px solid #232a36", "borderRadius": "16px", "padding": "28px 26px"}}>
+                    <div style={{"display": "flex", "alignItems": "center", "gap": "11px", "marginBottom": "6px"}}>
+                        <div style={{"width": "38px", "height": "38px", "borderRadius": "11px", "display": "grid", "placeItems": "center", "background": "linear-gradient(135deg, rgba(124,92,255,.28), rgba(43,212,196,.16))", "border": "1px solid #2b3444"}}><Database size={20} color="#9d7bff"/></div>
+                        <div style={{"fontSize": "1.25rem", "fontWeight": "700"}}>Metrics Workbench</div>
+                    </div>
+                    <p style={{"color": "#8b95a5", "fontSize": ".88rem", "margin": "0 0 20px"}}>
+                        {"Sign in — your datasets live on your own graph." if authmode == "login" else "Create an account — you get your own isolated workspace."}
+                    </p>
+                    <div style={{"display": "flex", "flexDirection": "column", "gap": "11px"}}>
+                        <input className="mw-in" type="email" placeholder="email" value={email}
+                            onChange={lambda e: ChangeEvent { email = e.target.value; }}/>
+                        <input className="mw-in" type="password" placeholder="password" value={password}
+                            onChange={lambda e: ChangeEvent { password = e.target.value; }}
+                            onKeyDown={lambda e: KeyboardEvent { if e.key == "Enter" { do_auth(); } }}/>
+                        {autherr and <div style={{"color": "#ff5470", "fontSize": ".84rem"}}>{autherr}</div>}
+                        <button className="mw-btn primary" disabled={authbusy} style={{"justifyContent": "center", "marginTop": "4px"}} onClick={lambda { do_auth(); }}>
+                            {"…" if authbusy else ("Sign in" if authmode == "login" else "Create account")}
+                        </button>
+                    </div>
+                    <div style={{"marginTop": "16px", "fontSize": ".86rem", "color": "#8b95a5", "textAlign": "center"}}>
+                        {(authmode == "login") and <span>No account? <span className="lnk" onClick={lambda { authmode = "signup"; autherr = ""; }}>Create one</span></span>}
+                        {(authmode == "signup") and <span>Have an account? <span className="lnk" onClick={lambda { authmode = "login"; autherr = ""; }}>Sign in</span></span>}
+                    </div>
+                </div>
+            </div>;
+    }
+
+    # ---- authenticated: the dashboard (runs on this user's own root) ----
     return
         <div style={{
             "minHeight": "100vh", "background": "radial-gradient(120% 90% at 50% -10%, #16131f 0%, #0b0d13 55%)",
@@ -55,12 +106,13 @@ def:pub app -> JsxElement {
                         "width": "44px", "height": "44px", "borderRadius": "12px", "display": "grid", "placeItems": "center",
                         "background": "linear-gradient(135deg, rgba(124,92,255,.28), rgba(43,212,196,.16))", "border": "1px solid #2b3444"
                     }}><Database size={22} color="#9d7bff"/></div>
-                    <div>
+                    <div style={{"flex": "1"}}>
                         <div style={{"fontSize": "1.5rem", "fontWeight": "700", "letterSpacing": "-.02em", "lineHeight": "1"}}>Metrics Workbench</div>
                         <div style={{"color": "#8b95a5", "fontSize": ".9rem", "marginTop": "4px"}}>
                             The capstone — <b style={{"color": "#a7b0c0"}}>pandas · pyod · statsmodels</b> doing the numeric heavy lifting, one Jac source.
                         </div>
                     </div>
+                    <button className="mw-btn" onClick={lambda { jacLogout(); authed = False; }} style={{"padding": "8px 12px"}}><LogOut size={15}/> Sign out</button>
                 </div>
 
                 <div style={{"display": "flex", "gap": "14px", "marginTop": "26px"}}>

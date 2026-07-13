@@ -4,6 +4,30 @@ Each method calls a server walker with `root spawn`; the walker runs pandas /
 pyod / statsmodels and reports client-ready dicts.
 """
 
+impl app.do_auth -> None {
+    authbusy = True;
+    autherr = "";
+    sr: dict | None = None;   # jacSignup returns a dict
+    ok: bool = False;         # jacLogin returns a bool
+    if authmode == "signup" {
+        sr = await jacSignup(email, password);
+        if not sr["success"] {
+            autherr = "Sign-up failed (the email may already be in use)";
+            authbusy = False;
+            return;
+        }
+    }
+    ok = await jacLogin(email, password);
+    if not ok {
+        autherr = "Invalid credentials";
+        authbusy = False;
+        return;
+    }
+    authed = True;
+    authbusy = False;
+    boot();   # first authenticated call — loads this user's own data
+}
+
 impl app.boot -> None {
     root spawn wb_seed();
     r = root spawn wb_dashboard(dataset="sales", metric="revenue");
