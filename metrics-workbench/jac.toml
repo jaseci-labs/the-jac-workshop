@@ -1,11 +1,37 @@
 [project]
 name = "metrics-workbench"
-kind = "app"
+version = "0.1.0"
+description = "Metrics Workbench — the capstone: heavy Python interop (pandas / statsmodels / pyod)"
+kind = "web-app"
+entry-point = "main.jac"
 
+# The load-bearing Python ecosystem — imported directly into the Jac source
+# (see analytics.py, imported by api.jac). Numeric heavy-lifting that JS has no
+# real answer for: dataframes, isolation-forest anomalies (pyod), SARIMAX.
 [dependencies.pip]
 pandas = ">=2.2"
+numpy = ">=2.0"
 statsmodels = ">=0.14"
 pyod = ">=2.0"
 
+# JS interop: the browser dashboard is React under the hood, compiled from the .cl.jac.
+[dependencies.npm]
+react = "^18.2.0"
+react-dom = "^18.2.0"
+recharts = "latest"
+lucide-react = "latest"
+
+[dependencies.npm.dev]
+vite = "^6.4.1"
+"@vitejs/plugin-react" = "^4.2.1"
+typescript = "^5.3.3"
+"@types/react" = "^18.2.0"
+"@types/react-dom" = "^18.2.0"
+
+[serve]
+base_route_app = "app"
+
+[plugins.client]
+
 [plugins.byllm.model]
-default_model = "claude-sonnet-4-20250514"
+default_model = "claude-haiku-4-5-20251001"

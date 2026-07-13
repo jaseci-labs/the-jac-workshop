@@ -1,7 +1,7 @@
 """Analytics helpers — pandas / statsmodels / pyod.
 
 Kept in Python because this is what the ecosystem is best at. The Jac side
-in main.jac holds the graph model, walkers, and orchestration; this module
+in api.jac holds the graph model, walkers, and orchestration; this module
 holds the numerical work.
 """
 
@@ -75,7 +75,7 @@ def detect_anomalies(
     values = daily.values.reshape(-1, 1)
     model = IForest(contamination=0.05, random_state=42)
     model.fit(values)
-    labels = model.labels_
+    labels = model.labels_              # 1 = outlier, 0 = inlier
     scores = model.decision_scores_
 
     points = []
@@ -145,6 +145,57 @@ def forecast(
         "horizon_days": int(horizon_days),
         "seasonality": seasonality,
         "aic": float(fit.aic),
+    }
+
+
+def web_dashboard(
+    path: str,
+    expression: str,
+    time_column: str,
+    window_days: int = 90,
+    horizon_days: int = 30,
+    seasonality: str = "weekly",
+) -> dict:
+    """One chart-ready payload for the web UI: the daily series with anomaly
+    flags, plus a forecast with confidence band, merged onto one date axis."""
+    series = compute_metric_series(path, expression, time_column)
+    daily = series.resample("D").sum().dropna()
+    if window_days > 0 and len(daily) > window_days:
+        daily = daily.iloc[-window_days:]
+
+    values = daily.values.reshape(-1, 1)
+    model = IForest(contamination=0.05, random_state=42)
+    model.fit(values)
+    labels = model.labels_
+    anom_idx = {i for i, lbl in enumerate(labels) if lbl == 1}
+
+    fc = forecast(path, expression, time_column, horizon_days, seasonality)
+
+    # scale to millions for a readable axis (the demo metric is revenue in $)
+    chart: list[dict] = []
+    for i, (ts, v) in enumerate(daily.items()):
+        mv = round(float(v) / 1e6, 2)
+        chart.append(
+            {
+                "ts": str(ts)[:10],
+                "value": mv,
+                "anomaly": mv if i in anom_idx else None,
+            }
+        )
+    for p in fc["points"]:
+        chart.append(
+            {
+                "ts": str(p["ts"])[:10],
+                "forecast": round(p["forecast"] / 1e6, 2),
+                "band": [round(p["lower"] / 1e6, 2), round(p["upper"] / 1e6, 2)],
+            }
+        )
+    return {
+        "chart": chart,
+        "anomaly_count": int(len(anom_idx)),
+        "point_count": int(len(daily)),
+        "aic": round(float(fc["aic"]), 1),
+        "horizon": int(horizon_days),
     }
 
 
