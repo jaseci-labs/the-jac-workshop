@@ -114,6 +114,45 @@ walker:pub series_points {
     }
 }
 
+# One-shot: seed-if-empty + z-score, all in a single walker (one root context).
+# The web client's boot uses this so a fresh graph populates in one call
+# (the desktop in-process runtime doesn't share graph state across spawns).
+walker:pub dashboard {
+    has series: str = "orders";
+    can run with Root entry {
+        matches = [-->][?:Series, name == self.series];
+        if not matches {
+            vals: list[float] = [];
+            for i in range(90) {
+                base = 200.0 + float(i);
+                if i >= 30 and i < 33 {
+                    base = base + 400.0;
+                }
+                if i == 55 {
+                    base = 20.0;
+                }
+                vals.append(base);
+            }
+            s = Series(name=self.series, points=vals);
+            root ++> s;
+        } else {
+            s = matches[0];
+        }
+        pts = s.points;
+        n = len(pts);
+        m = sum(pts) / n;
+        std = (sum([(v - m) ** 2 for v in pts]) / n) ** 0.5;
+        idx: list[int] = [];
+        for (i, v) in enumerate(pts) {
+            z = (v - m) / std if std > 0.0 else 0.0;
+            if abs(z) > 2.5 {
+                idx.append(i);
+            }
+        }
+        report {"points": pts, "anomalies": idx};
+    }
+}
+
 # z-score anomaly detection, written in plain Jac (no pandas, no pyod).
 walker:pub scan {
     has series: str;
@@ -175,7 +214,8 @@ walker:pub forecast {
         intercept = float(str(fit.intercept));
         h = int(self.horizon);
         proj = [slope * (n + k) + intercept for k in range(h)];
-        report {"slope": slope, "intercept": intercept, "horizon": h, "forecast": proj};
+        # round for display (client JS has no Python format specs)
+        report {"slope": round(slope, 3), "intercept": round(intercept, 2), "horizon": h, "forecast": proj};
     }
 }
 

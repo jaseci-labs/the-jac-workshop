@@ -19,7 +19,8 @@ and **one source that compiles to every build target with a near-zero diff.**
 | `metrics-workbench/` — the **capstone** (heavy-lib showcase) | ✅ present (merged from `main`); backend + CLI + agentic AI |
 | Package target | ✅ **built & verified** — `jac bundle` → wheel; `pip install` + `import pulse` works (runtime vendored) |
 | Installable app (PWA) | ✅ **built** — `jac build --client pwa` → manifest + service worker + install banner |
-| Native desktop | ◑ client bundle builds; native window host needs a C toolchain — this build's webview binding links WebKitGTK (Linux) |
+| Native desktop (macOS) | ◑ **native arm64 WKWebView app builds + opens a window + serves** — needed a Cocoa `libwebview.dylib` (this jac build's `build_libwebview.sh` is Linux/GTK-only) + server deps provisioned into the embedded runtime; in-process graph doesn't persist across spawns (chart empty). |
+| Web UI polish | ✅ **recharts + lucide-react** (npm) — real chart, stat cards, working Scan/Forecast/Narrate |
 
 **Verified end-to-end (via `jac enter`):**
 - `scan` — the z-score, written in **pure Jac**, flagged `indices [30, 31, 32, 55]`:

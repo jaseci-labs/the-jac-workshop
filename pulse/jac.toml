@@ -5,22 +5,11 @@ description = "Pulse — one Jac source, every target"
 entry-point = "main.jac"
 kind = "web-app"
 
-# Python interop, the first-class way: import a lib DIRECTLY inside main.jac and
-# use it inline - one import, same file, no service, no glue. The demo uses the
-# stdlib `statistics` (ships everywhere, nothing to install). To use a
-# third-party lib instead, declare it here and it's the identical one-line
-# import in main.jac:
-#
-#   [dependencies.pip]
-#   pandas = ">=2.2"          # then: import from pandas { read_csv }
-#
-# (A separate analytics.py, like the capstone has, is the *other* thing: an
-# escape hatch for code already written in Python.)
-
-# JS interop: the browser UI is React under the hood, compiled from the .cl.jac.
 [dependencies.npm]
 react = "^18.2.0"
 react-dom = "^18.2.0"
+recharts = "latest"
+lucide-react = "latest"
 
 [dependencies.npm.dev]
 vite = "^6.4.1"
@@ -35,6 +24,4 @@ base_route_app = "app"
 [plugins.client]
 
 [plugins.byllm.model]
-# Haiku 4.5: cheap + fast, ideal for narration. Swap for a local model, or
-# MockLLM, on airgapped / no-key workshop machines.
 default_model = "claude-haiku-4-5-20251001"

@@ -363,7 +363,10 @@ slope = fit.slope;</pre>
   <p>Add one <span class="kbd">.cl.jac</span> page — a component compiled to React — that
     <span class="kbd">sv import</span>s the walkers and calls them with <span class="kbd">root spawn</span>.
     No <span class="kbd">fetch</span>, no CORS, no request schema retyped as TypeScript. UI state lives
-    in reactive <span class="kbd">has</span> fields. One command builds the client and serves the API together:</p>
+    in reactive <span class="kbd">has</span> fields, and the <b>JS ecosystem is one import away too</b> —
+    the chart is <span class="kbd">recharts</span> and the icons <span class="kbd">lucide-react</span>,
+    npm packages pulled straight into the <span class="kbd">.cl.jac</span>. One command builds the client
+    and serves the API together:</p>
 
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="ttl">pulse — jac start --dev</span></div>

@@ -1,21 +1,37 @@
-"""Pulse - client dashboard (runs in the browser, compiled from Jac to React).
+"""Pulse - client dashboard (compiled from Jac to React).
 
-`sv import` pulls the server walkers in as typed client calls. State lives in
-`has` fields (React state); `root spawn <walker>()` invokes the walker over
-HTTP with no fetch/CORS glue. The chart is plain SVG built from the same data
-the CLI prints.
+`sv import` pulls the server walkers in as typed client calls; `root spawn`
+invokes them over the wire with no fetch/CORS glue. The chart is `recharts`
+(an npm package, imported directly), icons are `lucide-react`.
 """
 
-sv import from api { seed, scan, forecast, narrate, series_points }
+import from "recharts" { ResponsiveContainer, ComposedChart, Line, Scatter, XAxis, YAxis, CartesianGrid, Tooltip }
+import from "lucide-react" { Activity, Search, TrendingUp, Sparkles, TriangleAlert }
+
+sv import from api { dashboard, forecast, narrate }
+
+glob CSS = """
+  .pulse-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;font-weight:600;font-size:.9rem;cursor:pointer;border:1px solid #2b3444;background:#161c28;color:#e6edf3;transition:transform .12s ease,background .12s ease,border-color .12s ease;}
+  .pulse-btn:hover{transform:translateY(-1px);background:#1b2331;border-color:#3a475b;}
+  .pulse-btn:disabled{opacity:.5;cursor:default;transform:none;}
+  .pulse-btn.primary{background:linear-gradient(100deg,#ff6a3d,#ff8a52);border-color:transparent;color:#1a0d08;}
+  .pulse-btn.primary:hover{filter:brightness(1.05);}
+  .stat{background:#121620;border:1px solid #232a36;border-radius:14px;padding:16px 18px;flex:1;transition:border-color .15s;}
+  .stat:hover{border-color:#33405a;}
+  .stat .v{font-size:1.7rem;font-weight:700;letter-spacing:-.02em;line-height:1;}
+  .stat .l{font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:#5d6b80;margin-top:7px;font-family:ui-monospace,monospace;}
+""";
 
 def:pub app -> JsxElement {
     has points: list = [],
         anomalies: list = [],
+        slope: float = 0.0,
+        intercept: float = 0.0,
         summary: str = "",
         bullets: list = [],
-        status: str = "loading…";
+        status: str = "loading…",
+        busy: bool = False;
 
-    # runs once on mount: seed if empty, load points, run an initial scan
     can with entry {
         boot();
     }
@@ -24,60 +40,84 @@ def:pub app -> JsxElement {
     async def do_scan -> None;
     async def do_forecast -> None;
     async def do_narrate -> None;
-    def chart_svg -> str;
+    def chart_data -> list;
 
     return
         <div style={{
-            "minHeight": "100vh",
-            "background": "#0b0e14",
-            "color": "#e6edf3",
-            "fontFamily": "system-ui, -apple-system, sans-serif"
+            "minHeight": "100vh", "background": "radial-gradient(120% 90% at 50% -10%, #131a26 0%, #0b0e14 55%)",
+            "color": "#e6edf3", "fontFamily": "system-ui, -apple-system, Segoe UI, sans-serif"
         }}>
-            <div style={{"maxWidth": "820px", "margin": "0 auto", "padding": "44px 20px"}}>
-                <div style={{"display": "flex", "alignItems": "center", "gap": "10px"}}>
-                    <div style={{"width": "12px", "height": "12px", "borderRadius": "50%", "background": "#ff6a3d"}}></div>
-                    <h1 style={{"margin": "0", "fontSize": "1.7rem", "letterSpacing": "-0.02em"}}>Pulse</h1>
-                </div>
-                <p style={{"color": "#93a0b4", "marginTop": "6px"}}>
-                    The same walkers as the CLI — now in a browser. No fetch, no CORS, no glue.
-                </p>
+            <style>{CSS}</style>
+            <div style={{"maxWidth": "980px", "margin": "0 auto", "padding": "40px 22px 60px"}}>
 
-                <div style={{
-                    "background": "#11151d", "border": "1px solid #232a36",
-                    "borderRadius": "14px", "padding": "18px 18px 8px", "marginTop": "22px"
-                }}>
-                    <div dangerouslySetInnerHTML={{"__html": chart_svg()}}/>
-                    <div style={{"fontFamily": "monospace", "fontSize": "0.75rem", "color": "#5d6b80", "padding": "4px 2px 8px"}}>
-                        orders · anomalies flagged by scan
+                <div style={{"display": "flex", "alignItems": "center", "gap": "13px"}}>
+                    <div style={{
+                        "width": "42px", "height": "42px", "borderRadius": "12px", "display": "grid", "placeItems": "center",
+                        "background": "linear-gradient(135deg, rgba(255,106,61,.25), rgba(43,212,196,.18))",
+                        "border": "1px solid #2b3444"
+                    }}><Activity size={22} color="#ff6a3d"/></div>
+                    <div>
+                        <div style={{"fontSize": "1.5rem", "fontWeight": "700", "letterSpacing": "-.02em", "lineHeight": "1"}}>Pulse</div>
+                        <div style={{"color": "#8b95a5", "fontSize": ".9rem", "marginTop": "3px"}}>
+                            Anomaly detection &amp; forecasting — the same Jac walkers as the CLI, in your browser.
+                        </div>
                     </div>
                 </div>
 
-                <div style={{"display": "flex", "gap": "10px", "marginTop": "18px", "flexWrap": "wrap", "alignItems": "center"}}>
-                    <button onClick={lambda -> None { do_scan(); }} style={{
-                        "padding": "10px 18px", "background": "#161b26", "color": "#e6edf3",
-                        "border": "1px solid #2b6", "borderColor": "#2f3a4a", "borderRadius": "9px", "cursor": "pointer", "fontWeight": "600"
-                    }}>Scan</button>
-                    <button onClick={lambda -> None { do_forecast(); }} style={{
-                        "padding": "10px 18px", "background": "#161b26", "color": "#e6edf3",
-                        "border": "1px solid #2f3a4a", "borderRadius": "9px", "cursor": "pointer", "fontWeight": "600"
-                    }}>Forecast</button>
-                    <button onClick={lambda -> None { do_narrate(); }} style={{
-                        "padding": "10px 18px", "background": "linear-gradient(100deg,#ff6a3d,#ff8a52)",
-                        "color": "#1a0d08", "border": "none", "borderRadius": "9px", "cursor": "pointer", "fontWeight": "700"
-                    }}>Narrate ✦</button>
-                    <span style={{"color": "#5d6b80", "fontSize": "0.85rem", "fontFamily": "monospace"}}>{status}</span>
+                <div style={{"display": "flex", "gap": "14px", "marginTop": "26px"}}>
+                    <div className="stat"><div className="v">{len(points)}</div><div className="l">data points</div></div>
+                    <div className="stat"><div className="v" style={{"color": "#ff5470"}}>{len(anomalies)}</div><div className="l">anomalies</div></div>
+                    <div className="stat"><div className="v" style={{"color": "#2bd4c4"}}>{slope if slope != 0.0 else "—"}</div><div className="l">forecast slope / day</div></div>
+                </div>
+
+                <div style={{
+                    "background": "#0f1420", "border": "1px solid #232a36", "borderRadius": "16px",
+                    "padding": "18px 14px 10px", "marginTop": "16px"
+                }}>
+                    <div style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center", "padding": "0 8px 10px"}}>
+                        <div style={{"fontWeight": "600", "fontSize": ".95rem"}}>orders</div>
+                        <div style={{"display": "flex", "gap": "16px", "fontSize": ".75rem", "color": "#8b95a5", "fontFamily": "ui-monospace,monospace"}}>
+                            <span><span style={{"color": "#5b8bd4"}}>—</span> series</span>
+                            <span><span style={{"color": "#ff5470"}}>●</span> anomaly</span>
+                            <span><span style={{"color": "#2bd4c4"}}>--</span> forecast</span>
+                        </div>
+                    </div>
+                    <ResponsiveContainer width="100%" height={330}>
+                        <ComposedChart data={chart_data()} margin={{"top": 6, "right": 14, "left": -12, "bottom": 0}}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#1e2634" vertical={False}/>
+                            <XAxis dataKey="i" stroke="#4a5872" fontSize={11} tickLine={False} axisLine={False} minTickGap={28}/>
+                            <YAxis stroke="#4a5872" fontSize={11} tickLine={False} axisLine={False} width={44}/>
+                            <Tooltip contentStyle={{"background": "#121620", "border": "1px solid #2b3444", "borderRadius": "10px", "color": "#e6edf3", "fontSize": ".82rem"}} labelStyle={{"color": "#8b95a5"}} cursor={{"stroke": "#33405a"}}/>
+                            <Line type="monotone" dataKey="orders" stroke="#5b8bd4" strokeWidth={2} dot={False} isAnimationActive={True}/>
+                            <Line type="monotone" dataKey="trend" stroke="#2bd4c4" strokeWidth={2} strokeDasharray="6 5" dot={False} connectNulls={True} isAnimationActive={False}/>
+                            <Scatter dataKey="anomaly" fill="#ff5470" line={False}/>
+                        </ComposedChart>
+                    </ResponsiveContainer>
+                </div>
+
+                <div style={{"display": "flex", "gap": "11px", "marginTop": "18px", "alignItems": "center", "flexWrap": "wrap"}}>
+                    <button className="pulse-btn" disabled={busy} onClick={lambda { do_scan(); }}><Search size={16}/> Scan</button>
+                    <button className="pulse-btn" disabled={busy} onClick={lambda { do_forecast(); }}><TrendingUp size={16}/> Forecast</button>
+                    <button className="pulse-btn primary" disabled={busy} onClick={lambda { do_narrate(); }}><Sparkles size={16}/> Narrate</button>
+                    <span style={{"color": "#5d6b80", "fontSize": ".85rem", "fontFamily": "ui-monospace,monospace", "marginLeft": "4px"}}>{status}</span>
                 </div>
 
                 {summary and
                     <div style={{
-                        "marginTop": "20px", "padding": "20px 22px", "borderRadius": "14px",
-                        "background": "#150f0d", "border": "1px solid #59331f"
+                        "marginTop": "20px", "padding": "20px 22px", "borderRadius": "16px",
+                        "background": "linear-gradient(160deg, rgba(255,106,61,.10), #10131c)",
+                        "border": "1px solid rgba(255,106,61,.28)"
                     }}>
-                        <div style={{"color": "#ff6a3d", "fontSize": "0.8rem", "fontFamily": "monospace", "marginBottom": "8px"}}>✦ Insight · authored by llm</div>
-                        <div style={{"fontWeight": "600"}}>{summary}</div>
-                        <ul style={{"margin": "12px 0 0", "paddingLeft": "20px", "color": "#93a0b4"}}>
-                            {[<li key={idx} style={{"margin": "4px 0"}}>{b}</li> for (idx, b) in enumerate(bullets)]}
-                        </ul>
+                        <div style={{"display": "flex", "alignItems": "center", "gap": "8px", "color": "#ff8a52", "fontSize": ".78rem", "fontFamily": "ui-monospace,monospace", "marginBottom": "10px"}}>
+                            <Sparkles size={15}/> INSIGHT · authored by llm
+                        </div>
+                        <div style={{"fontWeight": "600", "fontSize": "1.02rem", "lineHeight": "1.5"}}>{summary}</div>
+                        <div style={{"marginTop": "12px", "display": "flex", "flexDirection": "column", "gap": "7px"}}>
+                            {[<div key={idx} style={{"display": "flex", "gap": "9px", "color": "#a7b0c0", "fontSize": ".92rem"}}>
+                                <TriangleAlert size={15} color="#ff6a3d" style={{"flexShrink": "0", "marginTop": "3px"}}/>
+                                <span>{b}</span>
+                            </div> for (idx, b) in enumerate(bullets)]}
+                        </div>
                     </div>
                 }
             </div>
