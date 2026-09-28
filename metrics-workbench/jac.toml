@@ -10,7 +10,6 @@ pandas = "~=3.0"
 numpy = "~=2.5"
 statsmodels = "~=0.14"
 pyod = "~=3.6"
-byllm = "~=0.6"
 
 [dependencies.npm]
 react = "^18.2.0"
