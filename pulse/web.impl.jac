@@ -75,10 +75,10 @@ impl app.do_narrate -> None {
     busy = False;
 }
 
-impl app.chart_data -> list[dict[str, any]] {
-    out = [];
+impl app.chart_data -> list[dict[str, int | float]] {
+    out: list[dict[str, int | float]] = [];
     for (i, v) in enumerate(points) {
-        row = {"i": i, "orders": v};
+        row: dict[str, int | float] = {"i": i, "orders": v};
         if i in anomalies {
             row["anomaly"] = v;
         }

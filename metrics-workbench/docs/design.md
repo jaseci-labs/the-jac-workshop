@@ -369,6 +369,8 @@ These need answers before implementation begins:
 
 - **Storage backend for persistence** — SQLite (default), or MongoDB for the
   demo? See `run-modes` in the lake.
+  *Resolved by the toolchain:* as of jac 0.36 Postgres is the only engine —
+  embedded locally, managed at scale.
 - **Auth provider** — what does the workshop demo use for the fullstack path?
 - **LLM provider config** — `by llm` needs a configured model; do we assume
   OpenAI, Anthropic, or a local model for the workshop machines?

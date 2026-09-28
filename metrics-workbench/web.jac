@@ -35,14 +35,14 @@ def:pub app -> JsxElement {
         authmode: str = "login",
         autherr: str = "",
         authbusy: bool = False,
-        chart: list[dict[str, any]] = [],
+        chart: list[dict[str, any]] = [],   # jac:ignore[W1037] -- rows mix str, float, None and [lo, hi]
         anomaly_count: int = 0,
         point_count: int = 0,
         aic: float = 0.0,
         summary: str = "",
         bullets: list[str] = [],
-        suggestions: list[dict[str, any]] = [],
-        history: list[dict[str, any]] = [],
+        suggestions: list[dict[str, str]] = [],
+        history: list[dict[str, str | int]] = [],
         status: str = "loading…",
         busy: bool = False;
 

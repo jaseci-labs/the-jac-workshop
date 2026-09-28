@@ -39,7 +39,7 @@ def:pub app -> JsxElement {
         intercept: float = 0.0,
         summary: str = "",
         bullets: list[str] = [],
-        history: list[dict[str, any]] = [],
+        history: list[dict[str, str | int]] = [],
         status: str = "loading…",
         busy: bool = False;
 
@@ -54,7 +54,7 @@ def:pub app -> JsxElement {
     async def do_scan -> None;
     async def do_forecast -> None;
     async def do_narrate -> None;
-    def chart_data -> list[dict[str, any]];
+    def chart_data -> list[dict[str, int | float]];
 
     # ---- unauthenticated: login / sign-up gate ----
     if not authed {

@@ -86,7 +86,7 @@ def _detect(points: list[float], threshold: float) -> tuple[list[int], list[floa
 
 # A readable timestamp for run history. `datetime` is a Python stdlib module
 # imported straight into Jac - the same interop move as `statistics` above.
-def _now() -> str {
+def _now -> str {
     return datetime.now().strftime("%b %d · %H:%M:%S");
 }
 
@@ -126,7 +126,7 @@ walker:pub seed {
 
 walker:pub list_series {
     can run with Root entry {
-        out: list[dict[str, any]] = [];
+        out: list[dict[str, str | int]] = [];
         for s in [-->][?:Series] {
             out.append({"name": s.name, "points": len(s.points)});
         }
@@ -272,7 +272,7 @@ walker:protect run_history {
         }
         s = smatches[0];
         rns: list[Run] = [s -->][?:Run];        # typed, so the report schema resolves
-        out: list[dict[str, any]] = [];
+        out: list[dict[str, str | int]] = [];
         for r in rns {
             ins_list: list[Insight] = [r -->][?:Insight];
             summary = ins_list[-1].summary if ins_list else "";
