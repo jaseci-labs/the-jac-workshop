@@ -30,7 +30,7 @@ It ships **two complete, working apps**:
 ## Prerequisites
 
 Jac **0.37+** (tested on 0.37.23). Install it by following the
-[official install guide](https://docs.jaseci.org/quick-guide/install/), then check with `jac --version`.
+[official install guide](https://jaclang.org/docs/latest/quick-guide/install), then check with `jac --version`.
 
 > **macOS arm64 + jac 0.37.23:** if `jac install` fails with
 > `_posixsubprocess ... symbol not found in flat namespace`, the binary's

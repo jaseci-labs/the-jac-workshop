@@ -27,7 +27,7 @@ metrics-workbench/
 ## Prerequisites
 
 - `jac` **0.37+** (tested on 0.37.23) — see the
-  [official install guide](https://docs.jaseci.org/quick-guide/install/).
+  [official install guide](https://jaclang.org/docs/latest/quick-guide/install).
 - **devenv + direnv** (recommended on NixOS) — the repo root has
   `devenv.nix` + `.envrc` so `cd`-ing into it enters a shell with a
   **regular Python 3.14** (not `3.14t`), which is the ABI Jac's embedded
