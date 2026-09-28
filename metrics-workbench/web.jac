@@ -1,6 +1,6 @@
 """Metrics Workbench — client dashboard (compiled from Jac to React).
 
-`sv import` pulls the server walkers in as typed client calls; `root spawn`
+A plain `import` of the server walkers compiles to typed client calls; `root spawn`
 invokes them over HTTP. The walkers are `:protect`, so the client must be logged
 in — and each user then runs against their own isolated `root` (per-user
 persistence, no auth-scoping code). The numbers come from pandas / pyod /
@@ -9,9 +9,9 @@ statsmodels server-side (analytics.py); the chart is `recharts`.
 
 import from "recharts" { ResponsiveContainer, ComposedChart, Line, Scatter, Area, XAxis, YAxis, CartesianGrid, Tooltip }
 import from "lucide-react" { Database, TriangleAlert, Sparkles, Lightbulb, LogOut, History, Clock }
-import from "@jac/runtime" { jacLogin, jacSignup, jacLogout, jacIsLoggedIn }
+import from "@jac/runtime" { SignupResult, jacLogin, jacSignup, jacLogout, jacIsLoggedIn }
 
-sv import from api { wb_seed, wb_dashboard, wb_narrate, wb_suggest, wb_runs }
+import from api { wb_seed, wb_dashboard, wb_narrate, wb_suggest, wb_runs }
 
 glob CSS = """
   .mw-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;font-weight:600;font-size:.9rem;cursor:pointer;border:1px solid #2b3444;background:#161c28;color:#e6edf3;transition:transform .12s ease,background .12s ease,border-color .12s ease;}
@@ -35,14 +35,14 @@ def:pub app -> JsxElement {
         authmode: str = "login",
         autherr: str = "",
         authbusy: bool = False,
-        chart: list = [],
+        chart: list[dict[str, any]] = [],
         anomaly_count: int = 0,
         point_count: int = 0,
         aic: float = 0.0,
         summary: str = "",
-        bullets: list = [],
-        suggestions: list = [],
-        history: list[dict] = [],
+        bullets: list[str] = [],
+        suggestions: list[dict[str, any]] = [],
+        history: list[dict[str, any]] = [],
         status: str = "loading…",
         busy: bool = False;
 
@@ -76,10 +76,10 @@ def:pub app -> JsxElement {
                     </p>
                     <div style={{"display": "flex", "flexDirection": "column", "gap": "11px"}}>
                         <input className="mw-in" type="email" placeholder="email" value={email}
-                            onChange={lambda e: ChangeEvent { email = e.target.value; }}/>
+                            onChange={lambda (e: ChangeEvent) { email = e.target.value; }}/>
                         <input className="mw-in" type="password" placeholder="password" value={password}
-                            onChange={lambda e: ChangeEvent { password = e.target.value; }}
-                            onKeyDown={lambda e: KeyboardEvent { if e.key == "Enter" { do_auth(); } }}/>
+                            onChange={lambda (e: ChangeEvent) { password = e.target.value; }}
+                            onKeyDown={lambda (e: KeyboardEvent) { if e.key == "Enter" { do_auth(); } }}/>
                         {autherr and <div style={{"color": "#ff5470", "fontSize": ".84rem"}}>{autherr}</div>}
                         <button className="mw-btn primary" disabled={authbusy} style={{"justifyContent": "center", "marginTop": "4px"}} onClick={lambda { do_auth(); }}>
                             {"…" if authbusy else ("Sign in" if authmode == "login" else "Create account")}

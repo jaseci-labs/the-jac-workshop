@@ -1,15 +1,15 @@
 """Pulse - client dashboard (compiled from Jac to React).
 
-`sv import` pulls the server walkers in as typed client calls; `root spawn`
+A plain `import` of the server walkers compiles to typed client calls; `root spawn`
 invokes them over the wire with no fetch/CORS glue. The chart is `recharts`
 (an npm package, imported directly), icons are `lucide-react`.
 """
 
 import from "recharts" { ResponsiveContainer, ComposedChart, Line, Scatter, XAxis, YAxis, CartesianGrid, Tooltip }
 import from "lucide-react" { Activity, Search, TrendingUp, Sparkles, TriangleAlert, LogOut, History, Clock }
-import from "@jac/runtime" { jacLogin, jacSignup, jacLogout, jacIsLoggedIn }
+import from "@jac/runtime" { SignupResult, jacLogin, jacSignup, jacLogout, jacIsLoggedIn }
 
-sv import from api { dashboard, scan, forecast, narrate, run_history }
+import from api { dashboard, scan, forecast, narrate, run_history }
 
 glob CSS = """
   .pulse-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;font-weight:600;font-size:.9rem;cursor:pointer;border:1px solid #2b3444;background:#161c28;color:#e6edf3;transition:transform .12s ease,background .12s ease,border-color .12s ease;}
@@ -33,13 +33,13 @@ def:pub app -> JsxElement {
         authmode: str = "login",
         autherr: str = "",
         authbusy: bool = False,
-        points: list = [],
-        anomalies: list = [],
+        points: list[float] = [],
+        anomalies: list[int] = [],
         slope: float = 0.0,
         intercept: float = 0.0,
         summary: str = "",
-        bullets: list = [],
-        history: list[dict] = [],
+        bullets: list[str] = [],
+        history: list[dict[str, any]] = [],
         status: str = "loading…",
         busy: bool = False;
 
@@ -54,7 +54,7 @@ def:pub app -> JsxElement {
     async def do_scan -> None;
     async def do_forecast -> None;
     async def do_narrate -> None;
-    def chart_data -> list;
+    def chart_data -> list[dict[str, any]];
 
     # ---- unauthenticated: login / sign-up gate ----
     if not authed {
@@ -75,10 +75,10 @@ def:pub app -> JsxElement {
                     </p>
                     <div style={{"display": "flex", "flexDirection": "column", "gap": "11px"}}>
                         <input className="pulse-in" type="email" placeholder="email" value={email}
-                            onChange={lambda e: ChangeEvent { email = e.target.value; }}/>
+                            onChange={lambda (e: ChangeEvent) { email = e.target.value; }}/>
                         <input className="pulse-in" type="password" placeholder="password" value={password}
-                            onChange={lambda e: ChangeEvent { password = e.target.value; }}
-                            onKeyDown={lambda e: KeyboardEvent { if e.key == "Enter" { do_auth(); } }}/>
+                            onChange={lambda (e: ChangeEvent) { password = e.target.value; }}
+                            onKeyDown={lambda (e: KeyboardEvent) { if e.key == "Enter" { do_auth(); } }}/>
                         {autherr and <div style={{"color": "#ff5470", "fontSize": ".84rem"}}>{autherr}</div>}
                         <button className="pulse-btn primary" disabled={authbusy} style={{"justifyContent": "center", "marginTop": "4px"}} onClick={lambda { do_auth(); }}>
                             {"…" if authbusy else ("Sign in" if authmode == "login" else "Create account")}
