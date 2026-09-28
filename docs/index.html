@@ -269,19 +269,19 @@
 <section id="run"><div class="wrap">
   <div class="step-badge"><span class="n">2</span> Run it — from the CLI, zero extra code</div>
   <h2>Every walker is already a command</h2>
-  <p>No argument parser to write: <span class="kbd">jac enter &lt;file&gt; &lt;walker&gt; &lt;args…&gt;</span> invokes any
-    walker. The graph <b>persists between calls</b> — seed once, scan later — because it lives on
+  <p>No argument parser to write: <span class="kbd">jac run --no-serve --entry &lt;walker&gt; &lt;file&gt; &lt;args…&gt;</span> invokes any
+    walker (<span class="kbd">--no-serve</span> because Pulse is a web app, so a bare <span class="kbd">jac run</span> serves it). The graph <b>persists between calls</b> — seed once, scan later — because it lives on
     <span class="kbd">root</span>. This is the actual output, captured live:</p>
 
   <div class="term">
-    <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="ttl">pulse — jac enter</span></div>
-<pre><span class="p">$</span> <span class="cmd">jac enter main.jac seed</span>
+    <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="ttl">pulse — jac run --entry</span></div>
+<pre><span class="p">$</span> <span class="cmd">jac run --no-serve --entry seed main.jac</span>
 <span class="out">{'name': 'orders', 'points': 90}</span>
 
-<span class="p">$</span> <span class="cmd">jac enter main.jac scan orders</span>
+<span class="p">$</span> <span class="cmd">jac run --no-serve --entry scan main.jac orders</span>
 <span class="out">{'run': 'e3897860…', 'anomalies': <span class="hl">4</span>, 'indices': <span class="hl">[30, 31, 32, 55]</span>}</span>
 
-<span class="p">$</span> <span class="cmd">jac enter main.jac forecast orders 14</span>
+<span class="p">$</span> <span class="cmd">jac run --no-serve --entry forecast main.jac orders 14</span>
 <span class="out">{'slope': 0.693, 'intercept': 224.4,
  'forecast': [286.7, 287.4, 288.1, 288.8, 289.5, …]}</span></pre>
   </div>
@@ -342,7 +342,7 @@ slope = fit.slope;</pre>
 
   <div class="term">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="ttl">pulse — narrate orders</span></div>
-<pre><span class="p">$</span> <span class="cmd">jac enter main.jac narrate orders</span></pre>
+<pre><span class="p">$</span> <span class="cmd">jac run --no-serve --entry narrate main.jac orders</span></pre>
   </div>
   <div class="insight">
     <div class="who">✦ Insight · authored by llm</div>
@@ -363,26 +363,26 @@ slope = fit.slope;</pre>
   <p>Before the frontend, one question: <b>whose</b> data is this? Every node Pulse hangs off
     <span class="kbd">root</span> — every <span class="kbd">Series</span>, <span class="kbd">Run</span>, <span class="kbd">Insight</span> —
     is <b>persisted automatically</b>. There is no <span class="kbd">CREATE TABLE</span>, no migration, no ORM: the
-    graph <i>is</i> the store, backed by SQLite. Auth is the second half of the same idea —
+    graph <i>is</i> the store, backed by an embedded Postgres the runtime provisions for you. Auth is the second half of the same idea —
     <b>each user gets their own <span class="kbd">root</span></b>, so the very same walker reads and writes a
     different, private slice of that persistent graph per person.</p>
 
   <p>That's the whole change. A <span class="kbd">:pub</span> walker runs on one shared guest graph;
-    drop the <span class="kbd">:pub</span> and the walker now demands a JWT and runs on <b>the caller's</b> root.
+    swap <span class="kbd">:pub</span> for <span class="kbd">:protect</span> and the walker now demands a JWT and runs on <b>the caller's</b> root.
     No <span class="kbd">user_id</span> column, no <span class="kbd">WHERE owner = ?</span> — identity is the root you're standing on.</p>
 
   <pre class="code"><span class="c"># BEFORE — one shared graph. Everyone saw the same Series.</span>
 <span class="k">walker</span>:<span class="k">pub</span> <span class="t">dashboard</span> { ... }
 
-<span class="c"># AFTER — drop :pub. JWT required; every call runs on the CALLER's own root.</span>
-<span class="c"># (:protect = auth + own root, and still importable by the .cl.jac web client;</span>
-<span class="c">#  only :pub ever skips auth — it's the one visibility that does.)</span>
+<span class="c"># AFTER — :protect. JWT required; every call runs on the CALLER's own root.</span>
+<span class="c"># (still importable by the web.jac client; a plain `walker` with no tag is</span>
+<span class="c">#  private — never served — so the access tag IS the endpoint declaration.)</span>
 <span class="k">walker</span>:<span class="k">protect</span> <span class="t">dashboard</span> { ... }   <span class="c"># same body, unchanged</span></pre>
 
   <p>On the client it's a login gate in front of the same dashboard — three helpers from
     <span class="kbd">@jac/runtime</span>, no token plumbing:</p>
 
-  <pre class="code"><span class="c"># web.cl.jac — the gate. jacIsLoggedIn() decides; jacLogin() gets you a root.</span>
+  <pre class="code"><span class="c"># web.jac — the gate. jacIsLoggedIn() decides; jacLogin() gets you a root.</span>
 <span class="k">import from</span> <span class="s">"@jac/runtime"</span> { jacLogin, jacSignup, jacIsLoggedIn }
 
 <span class="k">if</span> <span class="k">not</span> authed {                       <span class="c"># authed = jacIsLoggedIn() at mount</span>
@@ -409,19 +409,21 @@ slope = fit.slope;</pre>
 <section id="web"><div class="wrap">
   <div class="step-badge"><span class="n">6</span> Full-stack web — +1 file</div>
   <h2>The same walkers, now a web app</h2>
-  <p>Add one <span class="kbd">.cl.jac</span> page — a component compiled to React — that
-    <span class="kbd">sv import</span>s the walkers and calls them with <span class="kbd">root spawn</span>.
+  <p>Add one <span class="kbd">web.jac</span> page — a component compiled to React (its JSX is what makes it
+    client code; no marker, no special suffix) — that <span class="kbd">import</span>s the walkers and calls them with
+    <span class="kbd">root spawn</span>.
     No <span class="kbd">fetch</span>, no CORS, no request schema retyped as TypeScript. UI state lives
     in reactive <span class="kbd">has</span> fields, and the <b>JS ecosystem is one import away too</b> —
     the chart is <span class="kbd">recharts</span> and the icons <span class="kbd">lucide-react</span>,
-    npm packages pulled straight into the <span class="kbd">.cl.jac</span>. One command builds the client
+    npm packages pulled straight into the <span class="kbd">web.jac</span>. One command builds the client
     and serves the API together:</p>
 
   <div class="term">
-    <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="ttl">pulse — jac start --dev</span></div>
-<pre><span class="p">$</span> <span class="cmd">jac start --dev main.jac</span>
-<span class="out">Gateway starting on <span class="hl">http://localhost:8000</span>
-<span class="ok">✔</span> Initial client compilation completed</span></pre>
+    <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="ttl">pulse — jac run --dev</span></div>
+<pre><span class="p">$</span> <span class="cmd">jac run --dev main.jac</span>
+<span class="out">  ➜  Local:     <span class="hl">http://localhost:8000/</span>
+  Server ready
+  Mode: Development (with HMR)</span></pre>
   </div>
 
   <figure>
@@ -431,32 +433,32 @@ slope = fit.slope;</pre>
 
   <p class="muted">Click <b>Narrate</b> and the browser calls the <span class="kbd">narrate</span> walker over
     HTTP → Claude writes a typed <span class="kbd">Insight</span> → the card renders it. Exactly the same
-    code path as <span class="kbd">jac enter main.jac narrate orders</span> — one walker, two front doors.</p>
+    code path as <span class="kbd">jac run --no-serve --entry narrate main.jac orders</span> — one walker, two front doors.</p>
 </div></section>
 
 <section id="ship"><div class="wrap">
   <div class="step-badge"><span class="n">7</span> Desktop · installable · packaged</div>
   <h2>Same source — off to more targets</h2>
-  <p>No new app code. Each of these is a build flag over the exact same
-    <span class="kbd">main.jac</span> / <span class="kbd">api.jac</span>. Real build output below.</p>
+  <p>No new app code. Each of these is a build flag or one line of <span class="kbd">jac.toml</span> over the
+    exact same <span class="kbd">main.jac</span> / <span class="kbd">api.jac</span>. Real build output below.</p>
 
   <div class="grid2">
     <div class="card">
       <div class="lbl" style="color:var(--accent-2)">installable app · PWA</div>
       <h3>Runs on the desktop &amp; home screen</h3>
-      <pre class="code" style="font-size:.78rem;margin:10px 0 0"><span class="c"># installable, offline, no native deps</span>
-$ jac build --client pwa main.jac
+      <pre class="code" style="font-size:.78rem;margin:10px 0 0"><span class="c"># jac.toml: [client.pwa]  theme_color = "#ff6a3d"</span>
+$ jac setup &amp;&amp; jac build --as client
 <span class="s">✔</span> Generated manifest.json
 <span class="s">✔</span> Generated sw.js (service worker)
 <span class="s">✔</span> Added PWA install banner
-<span class="s">✅ PWA build complete!</span></pre>
+<span class="s">✔</span> PWA manifest and service worker written</pre>
     </div>
     <div class="card">
       <div class="lbl" style="color:var(--accent)">reusable package · wheel</div>
       <h3>pip-installable, runtime vendored</h3>
       <pre class="code" style="font-size:.78rem;margin:10px 0 0"><span class="c"># ship the core to others</span>
-$ jac bundle
-<span class="s">✔</span> pulse-0.1.0-py3-none-any.whl
+$ jac build --as wheel
+<span class="s">✔</span> Built pulse-0.1.0-py3-none-any.whl
 $ pip install pulse-0.1.0-*.whl
 $ python -c <span class="s">"import pulse"</span>   <span class="c"># ✓ works</span></pre>
     </div>
@@ -464,13 +466,14 @@ $ python -c <span class="s">"import pulse"</span>   <span class="c"># ✓ works<
 
   <div class="term" style="margin-top:18px">
     <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="ttl">pulse — native desktop</span></div>
-<pre><span class="p">$</span> <span class="cmd">jac build --client desktop main.jac</span>
-<span class="out"><span class="ok">✔</span> Client bundle built
-  Native window host: WKWebView (macOS) / WebKitGTK (Linux) — no Electron, no Rust</span></pre>
+<pre><span class="c"># jac.toml: [project] kind = "desktop"</span>
+<span class="p">$</span> <span class="cmd">jac build</span>
+<span class="out">  Compiling native host (jac build --native)...
+<span class="ok">✅</span> Desktop app built: .jac/client/desktop/pulse.app
+  Native window host: WKWebView (macOS) / WebKitGTK (Linux) / WebView2 (Windows) — no Electron, no Rust</span></pre>
   </div>
-  <p class="muted">One flag wraps the same UI in a native OS window. The client bundle builds
-    everywhere; the native window host is compiled by a C toolchain (on this build the
-    packaged webview binding links against WebKitGTK, so the host builds on Linux).</p>
+  <p class="muted">One line of config wraps the same UI in a native OS window: the kind picks the client,
+    and the host is a single natively compiled binary embedding the OS webview.</p>
 </div></section>
 
 <section id="targets"><div class="wrap">
@@ -480,13 +483,13 @@ $ python -c <span class="s">"import pulse"</span>   <span class="c"># ✓ works<
   <table class="score">
     <thead><tr><th>Target</th><th>The diff</th><th>Why it lands</th></tr></thead>
     <tbody>
-      <tr><td>CLI + native binary</td><td class="diff">+ 0 lines</td><td class="muted"><span class="kbd">jac enter</span> · <span class="kbd">jac nacompile</span> → a binary with no Python runtime</td></tr>
-      <tr><td>Backend REST API</td><td class="diff">already there</td><td class="muted">every walker is already an endpoint — <span class="kbd">has</span> fields in, <span class="kbd">report</span> out, no route glue</td></tr>
-      <tr><td>Auth + per-user DB</td><td class="diff">drop <span class="kbd">:pub</span></td><td class="muted">graph auto-persists (SQLite); each user gets their own <span class="kbd">root</span> — JWT, no ORM, no <span class="kbd">user_id</span> columns</td></tr>
-      <tr><td>Full-stack web app</td><td class="diff">+ 1 file</td><td class="muted">a <span class="kbd">.cl.jac</span> page calling <span class="kbd">scan</span> via <span class="kbd">root() spawn</span> — no CORS, no fetch</td></tr>
-      <tr><td>Desktop / mobile</td><td class="diff">+ 1 flag</td><td class="muted"><span class="kbd">--client desktop</span> — OS webview, no Electron</td></tr>
+      <tr><td>CLI + native binary</td><td class="diff">+ 0 lines</td><td class="muted"><span class="kbd">jac run --entry</span> · <span class="kbd">jac build --native</span> → a binary with no Python runtime</td></tr>
+      <tr><td>Backend REST API</td><td class="diff">already there</td><td class="muted">every <span class="kbd">:pub</span>/<span class="kbd">:protect</span> walker is already an endpoint — <span class="kbd">has</span> fields in, <span class="kbd">report</span> out, no route glue</td></tr>
+      <tr><td>Auth + per-user DB</td><td class="diff"><span class="kbd">:pub</span> → <span class="kbd">:protect</span></td><td class="muted">graph auto-persists (embedded Postgres); each user gets their own <span class="kbd">root</span> — JWT, no ORM, no <span class="kbd">user_id</span> columns</td></tr>
+      <tr><td>Full-stack web app</td><td class="diff">+ 1 file</td><td class="muted">a <span class="kbd">web.jac</span> page calling <span class="kbd">scan</span> via <span class="kbd">root() spawn</span> — no CORS, no fetch</td></tr>
+      <tr><td>Desktop / PWA</td><td class="diff">1 config line</td><td class="muted"><span class="kbd">kind = "desktop"</span> — OS webview, no Electron · <span class="kbd">[client.pwa]</span> — installable</td></tr>
       <tr><td>AI agent</td><td class="diff">walkers = tools</td><td class="muted">an LLM drives your walkers; the app <i>is</i> the toolset</td></tr>
-      <tr><td>Reusable package</td><td class="diff">config</td><td class="muted"><span class="kbd">jac bundle</span> / wheel — ship the core to others</td></tr>
+      <tr><td>Reusable package</td><td class="diff">config</td><td class="muted"><span class="kbd">jac build --as wheel</span> — ship the core to others</td></tr>
     </tbody>
   </table>
   <p class="muted" style="margin-top:22px">Six targets off the menu. One core. No rewrites — and when you

@@ -2,7 +2,7 @@
 name = "pulse"
 version = "0.1.0"
 description = "Pulse — one Jac source, every target"
-entry-point = "main.jac"
+entry-point = "main"
 kind = "web-app"
 
 [dependencies.npm]
@@ -18,10 +18,6 @@ typescript = "^5.3.3"
 "@types/react" = "^18.2.0"
 "@types/react-dom" = "^18.2.0"
 
-[serve]
-base_route_app = "app"
 
-[plugins.client]
-
-[plugins.byllm.model]
+[byllm.model]
 default_model = "claude-haiku-4-5-20251001"

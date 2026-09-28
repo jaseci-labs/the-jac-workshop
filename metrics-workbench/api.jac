@@ -22,6 +22,8 @@ import from analytics {
 
 import from datetime { datetime }
 import sys;
+import from contextlib { redirect_stdout }
+import from io { StringIO }
 
 
 # ---------------------------------------------------------------------------
@@ -146,7 +148,7 @@ def decide_next(question: str, current_metric: str, recent_runs_summary: str) ->
 # Lookup helpers (flat CRUD — reach into the graph, return a value)
 # ---------------------------------------------------------------------------
 
-def:pub list_datasets() -> list[Dataset] {
+def:pub list_datasets -> list[Dataset] {
     return [root-->][?:Dataset];
 }
 
@@ -306,7 +308,7 @@ def:pub delete_dataset(name: str) -> str {
 # 1. workspace_summary — nested recursion via `visit [-->]`. Reports one
 #    WorkspaceSnapshot after visiting every Dataset, Metric, and AnalysisRun
 #    in the graph.
-walker workspace_summary {
+walker:protect workspace_summary {
     has snapshots: list[DatasetSnapshot] = [];
     has stack: list[DatasetSnapshot] = [];
     has reports: list[WorkspaceSnapshot] = [];
@@ -360,7 +362,7 @@ walker workspace_summary {
 #    Visits every Metric; if the newest AnalysisRun is older than
 #    max_age_days (or none exists), spawns a fresh anomaly detection and
 #    attaches the new run node.
-walker refresh_stale_analyses {
+walker:protect refresh_stale_analyses {
     has max_age_days: int = 7;
     has refreshed: list[str] = [];
     has reports: list[list[str]] = [];
@@ -414,7 +416,7 @@ walker refresh_stale_analyses {
 # 3. prune_orphan_insights — traversal that DELETES as it walks. An Insight
 #    is "orphan" if its parent AnalysisRun no longer exists (edge dangling).
 #    Uses `disengage` to stop early on the healthy path.
-walker prune_orphan_insights {
+walker:protect prune_orphan_insights {
     has deleted: list[str] = [];
     has reports: list[list[str]] = [];
 
@@ -441,7 +443,7 @@ walker prune_orphan_insights {
 }
 
 # 4. export_lineage — flat DAG dump. Emits every visited node as a LineageEntry.
-walker export_lineage {
+walker:protect export_lineage {
     has entries: list[LineageEntry] = [];
     has reports: list[list[LineageEntry]] = [];
 
@@ -475,7 +477,7 @@ walker export_lineage {
 
 # 5. investigate — agentic walker. `by llm` decides where to hop at each
 #    Metric visited. This is the OSP-with-AI pattern.
-walker investigate {
+walker:protect investigate {
     has question: str;
     has max_hops: int = 5;
     has trail: list[str] = [];
@@ -597,7 +599,7 @@ walker:protect wb_suggest {
         ds = find_dataset(self.dataset);
         sample = py_preview(ds.source_path, "orders", "order_ts", 3);
         suggestions = suggest_metrics(ds.name, py_dumps(ds.columns), py_dumps(sample));
-        out: list[dict] = [];
+        out: list[dict[str, str]] = [];
         for s in suggestions {
             out.append({"name": s.name, "expression": s.expression, "rationale": s.rationale});
         }
@@ -609,7 +611,7 @@ walker:protect wb_runs {
     has dataset: str = "sales";
     has metric: str = "revenue";
     can run with Root entry {
-        out: list[dict] = [];
+        out: list[dict[str, str | int]] = [];
         for r in list_runs(self.dataset, self.metric) {
             out.append({"jid": r.jid[:8], "kind": r.kind, "run_at": r.run_at[:16].replace("T", " · "), "anomalies": r.anomaly_count, "horizon": r.horizon_days});
         }
@@ -623,7 +625,7 @@ walker:protect wb_runs {
 # CLI dispatch
 # ---------------------------------------------------------------------------
 
-def cli_help() {
+def cli_help {
     print("metrics-workbench — Jac workshop demo");
     print("");
     print("Commands:");
@@ -691,7 +693,10 @@ with entry:__main__ {
         } elif cmd == "delete" {
             print(delete_dataset(args[0]));
         } elif cmd == "summary" {
-            summary_res = root spawn workspace_summary();
+            # `report` also echoes to stdout; mute it and print our own format.
+            with redirect_stdout(StringIO()) {
+                summary_res = root spawn workspace_summary();
+            }
             snap = summary_res.reports[0];
             print(f"workspace: {snap.dataset_count} datasets");
             for d in snap.datasets {
@@ -702,22 +707,34 @@ with entry:__main__ {
             }
         } elif cmd == "refresh" {
             max_age = int(args[0]) if args else 7;
-            refresh_res = root spawn refresh_stale_analyses(max_age_days=max_age);
+            # `report` also echoes to stdout; mute it and print our own format.
+            with redirect_stdout(StringIO()) {
+                refresh_res = root spawn refresh_stale_analyses(max_age_days=max_age);
+            }
             refreshed = refresh_res.reports[0] if refresh_res.reports else [];
             print(f"refreshed {len(refreshed)} metric(s): {refreshed}");
         } elif cmd == "prune" {
-            prune_res = root spawn prune_orphan_insights();
+            # `report` also echoes to stdout; mute it and print our own format.
+            with redirect_stdout(StringIO()) {
+                prune_res = root spawn prune_orphan_insights();
+            }
             deleted = prune_res.reports[0] if prune_res.reports else [];
             print(f"pruned {len(deleted)} orphan insight(s)");
         } elif cmd == "lineage" {
-            lineage_res = root spawn export_lineage();
+            # `report` also echoes to stdout; mute it and print our own format.
+            with redirect_stdout(StringIO()) {
+                lineage_res = root spawn export_lineage();
+            }
             entries = lineage_res.reports[0] if lineage_res.reports else [];
             for e in entries {
                 print(f"{e.kind}\t{e.name}\t{e.jid[:8]}");
             }
         } elif cmd == "investigate" {
             question = " ".join(args);
-            investigate_res = root spawn investigate(question=question);
+            # `report` also echoes to stdout; mute it and print our own format.
+            with redirect_stdout(StringIO()) {
+                investigate_res = root spawn investigate(question=question);
+            }
             for p in investigate_res.reports {
                 print(p.summary);
                 for b in p.bullets {

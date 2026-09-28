@@ -176,23 +176,26 @@
     app against 129,600 rows:</p>
 
   <div class="term">
-    <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="ttl">metrics-workbench — jac run api.jac</span></div>
-<pre><span class="pr">$</span> <span class="cmd">jac run api.jac ingest sales data/synth_ecom.csv</span>
+    <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i><span class="ttl">metrics-workbench — jac run --no-serve api.jac</span></div>
+<pre><span class="pr">$</span> <span class="cmd">jac run --no-serve api.jac ingest sales data/synth_ecom.csv</span>
 <span class="out">sales   <span class="hl">129600 rows</span>   [order_ts, region, channel, orders, gross_revenue, …]</span>
 
-<span class="pr">$</span> <span class="cmd">jac run api.jac anomaly sales revenue 90</span>
+<span class="pr">$</span> <span class="cmd">jac run --no-serve api.jac metric sales revenue "gross_revenue - refunds" order_ts</span>
+<span class="out">defined metric revenue on sales: gross_revenue - refunds</span>
+
+<span class="pr">$</span> <span class="cmd">jac run --no-serve api.jac anomaly sales revenue 90</span>
 <span class="out">run 569ff4c7  <span class="hl">anomalies=5/90</span>  108ms          <span class="c"># pyod IForest</span></span>
 
-<span class="pr">$</span> <span class="cmd">jac run api.jac forecast sales revenue 30</span>
+<span class="pr">$</span> <span class="cmd">jac run --no-serve api.jac forecast sales revenue 30</span>
 <span class="out">run 80c6db31  <span class="hl">aic=2488.2</span> horizon=30d  124ms     <span class="c"># statsmodels SARIMAX</span></span>
 
-<span class="pr">$</span> <span class="cmd">jac run api.jac narrate sales revenue 569ff4c7</span>
+<span class="pr">$</span> <span class="cmd">jac run --no-serve api.jac narrate sales revenue 569ff4c7</span>
 <span class="out">Revenue anomalies detected over the past 90 days using Isolation Forest.
   - Highest anomaly score 0.818 on May 2, 2026 with revenue $51.16M
   - Consecutive high-value anomalies in early May suggest a revenue surge
   (confidence=0.82)</span>
 
-<span class="pr">$</span> <span class="cmd">jac run api.jac investigate "what happened to revenue"</span>
+<span class="pr">$</span> <span class="cmd">jac run --no-serve api.jac investigate "what happened to revenue"</span>
 <span class="out"><span class="c"># the by-llm agent walks the graph, then narrates what it found</span>
 30-day forecast showing weekly seasonality; confidence intervals widen
 sharply toward late July — caution for longer-term predictions.</span></pre>
@@ -203,26 +206,26 @@ sharply toward late July — caution for longer-term predictions.</span></pre>
   <h2>Auth &amp; persistence — a layer, not a rewrite</h2>
   <p>The workbench ingests 129,600 rows through pandas — but the <b>results</b> it keeps
     (<span class="kbd">Dataset → Metric → AnalysisRun → Insight</span>) are nodes hung off
-    <span class="kbd">root</span>, so they <b>persist automatically</b> on SQLite. No schema, no migration, no ORM.
+    <span class="kbd">root</span>, so they <b>persist automatically</b> in an embedded Postgres the runtime provisions. No schema, no migration, no ORM.
     Auth is the same graph seen through one more lens: <b>each user gets their own <span class="kbd">root</span></b>, so
     the same walker runs against a private workbench per person.</p>
 
   <p>The change is one keyword. A <span class="kbd">:pub</span> walker runs on a single shared guest graph;
-    drop the <span class="kbd">:pub</span> and the walker demands a JWT and runs on <b>the caller's</b> root —
+    swap <span class="kbd">:pub</span> for <span class="kbd">:protect</span> and the walker demands a JWT and runs on <b>the caller's</b> root —
     there is no <span class="kbd">user_id</span> to pass and no <span class="kbd">WHERE owner = ?</span> to write.</p>
 
   <pre class="code"><span class="c"># BEFORE — one shared graph; every visitor saw the same datasets.</span>
 <span class="k">walker</span>:<span class="k">pub</span> <span class="t">wb_dashboard</span> { ... }
 
-<span class="c"># AFTER — drop :pub. JWT required; each caller runs on their OWN root.</span>
-<span class="c"># :protect = auth + own root, still importable by the .cl.jac web client.</span>
-<span class="c"># Only :pub ever skips auth — it's the one visibility that does.</span>
+<span class="c"># AFTER — :protect. JWT required; each caller runs on their OWN root.</span>
+<span class="c"># Still importable by the web.jac client. A plain `walker` with no tag is</span>
+<span class="c"># private (never served), so the access tag IS the endpoint declaration.</span>
 <span class="k">walker</span>:<span class="k">protect</span> <span class="t">wb_dashboard</span> { ... }   <span class="c"># body unchanged: pandas + pyod + SARIMAX</span></pre>
 
   <p>The client puts a login gate in front of the dashboard — three helpers from
     <span class="kbd">@jac/runtime</span>, no token wiring:</p>
 
-  <pre class="code"><span class="c"># web.cl.jac</span>
+  <pre class="code"><span class="c"># web.jac</span>
 <span class="k">import from</span> <span class="s">"@jac/runtime"</span> { jacLogin, jacSignup, jacIsLoggedIn }
 
 <span class="k">if</span> <span class="k">not</span> authed {                     <span class="c"># authed = jacIsLoggedIn() at mount</span>
@@ -253,19 +256,19 @@ sharply toward late July — caution for longer-term predictions.</span></pre>
     <thead><tr><th>Showcase point</th><th>How the capstone does it</th></tr></thead>
     <tbody>
       <tr><td class="k">Python interop</td><td class="muted">pandas + pyod + statsmodels imported into <span class="kbd">api.jac</span> via <span class="kbd">analytics.py</span></td></tr>
-      <tr><td class="k">Native DB / graph</td><td class="muted">Dataset → Metric → AnalysisRun → Insight auto-persist on <span class="kbd">root</span> (SQLite), no ORM</td></tr>
-      <tr><td class="k">Auth + per-user data</td><td class="muted">drop <span class="kbd">:pub</span> → JWT + each user's own <span class="kbd">root</span>; login gate via <span class="kbd">@jac/runtime</span> (<a href="#auth">above</a>)</td></tr>
+      <tr><td class="k">Native DB / graph</td><td class="muted">Dataset → Metric → AnalysisRun → Insight auto-persist on <span class="kbd">root</span> (embedded Postgres), no ORM</td></tr>
+      <tr><td class="k">Auth + per-user data</td><td class="muted"><span class="kbd">:pub</span> → <span class="kbd">:protect</span> = JWT + each user's own <span class="kbd">root</span>; login gate via <span class="kbd">@jac/runtime</span> (<a href="#auth">above</a>)</td></tr>
       <tr><td class="k">AI as a primitive</td><td class="muted">3× <span class="kbd">by llm</span>: narrate, suggest_metrics, and an agentic <span class="kbd">investigate</span> walker</td></tr>
-      <tr><td class="k">Full-stack web</td><td class="muted">a <span class="kbd">.cl.jac</span> recharts dashboard calling the walkers via <span class="kbd">root spawn</span> (above)</td></tr>
+      <tr><td class="k">Full-stack web</td><td class="muted">a <span class="kbd">web.jac</span> recharts dashboard calling the walkers via <span class="kbd">root spawn</span> (above)</td></tr>
       <tr><td class="k">REST API</td><td class="muted">authenticated walkers → per-user endpoints (<span class="kbd">POST /walker/wb_dashboard</span>)</td></tr>
-      <tr><td class="k">CLI</td><td class="muted"><span class="kbd">jac run api.jac &lt;cmd&gt;</span> — ingest, anomaly, forecast, narrate, investigate, summary, lineage</td></tr>
+      <tr><td class="k">CLI</td><td class="muted"><span class="kbd">jac run --no-serve api.jac &lt;cmd&gt;</span> — ingest, anomaly, forecast, narrate, investigate, summary, lineage</td></tr>
     </tbody>
   </table>
   <div class="callout" style="border-color:var(--accent-2)">
     <b>Run it yourself.</b>
     <span class="kbd">cd metrics-workbench</span> → <span class="kbd">jac install</span> →
-    <span class="kbd">python data/generate_synth.py data/synth_ecom.csv</span> →
-    <span class="kbd">jac start --dev main.jac</span> (web) or <span class="kbd">jac run api.jac anomaly sales revenue 90</span> (CLI).
+    <span class="kbd">.jac/venv/bin/python data/generate_synth.py data/synth_ecom.csv</span> →
+    <span class="kbd">jac run --dev main.jac</span> (web) or <span class="kbd">jac run --no-serve api.jac anomaly sales revenue 90</span> (CLI).
   </div>
 </div></section>
 

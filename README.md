@@ -27,20 +27,33 @@ It ships **two complete, working apps**:
 | [`docs/`](docs/) | The GitHub Pages walkthrough (source of the site above) |
 | [`WORKSHOP_PLAN.md`](WORKSHOP_PLAN.md) | The full run-of-show (60–90 min) |
 
+## Prerequisites
+
+Jac **0.37+** (tested on 0.37.23), installed as the native `jac` binary:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jaseci-labs/jaseci/main/scripts/install.sh | bash
+```
+
+> **macOS arm64 + jac 0.37.23:** if `jac install` fails with
+> `_posixsubprocess ... symbol not found in flat namespace`, the binary's
+> bundled Python can't create the project venv. Pre-create it with any regular
+> CPython 3.14 and re-run: `python3.14 -m venv .jac/venv && jac install`.
+
 ## Run Pulse
 
 ```bash
 cd pulse
 jac install
 
-# CLI — every walker is a subcommand, zero extra code
-jac enter main.jac seed
-jac enter main.jac scan orders        # → {'anomalies': 4, 'indices': [30, 31, 32, 55]}
-jac enter main.jac forecast orders 14 # statistics.linear_regression, imported inline
-jac enter main.jac narrate orders     # by llm → a typed Insight
+# CLI — every walker is an entrypoint, zero extra code
+jac run --no-serve --entry seed main.jac
+jac run --no-serve --entry scan main.jac orders        # → {'anomalies': 4, 'indices': [30, 31, 32, 55]}
+jac run --no-serve --entry forecast main.jac orders 14 # statistics.linear_regression, imported inline
+jac run --no-serve --entry narrate main.jac orders     # by llm → a typed Insight
 
-# Full-stack web — the SAME walkers, + one .cl.jac page
-jac start --dev main.jac              # → http://localhost:8000
+# Full-stack web — the SAME walkers, + one client page (web.jac)
+jac run --dev main.jac                                 # → http://localhost:8000
 ```
 
 ## Run the Metrics Workbench (capstone)
@@ -51,17 +64,18 @@ statsmodels SARIMAX forecasting, and three `by llm` features.
 ```bash
 cd metrics-workbench
 jac install
-python data/generate_synth.py data/synth_ecom.csv   # 90 days of e-commerce data
+.jac/venv/bin/python data/generate_synth.py data/synth_ecom.csv   # 90 days of e-commerce data
 
 # CLI — same walkers as the dashboard
-jac run api.jac ingest sales data/synth_ecom.csv
-jac run api.jac anomaly sales revenue 90     # pyod IForest
-jac run api.jac forecast sales revenue 30    # statsmodels SARIMAX
-jac run api.jac narrate sales revenue <run>  # by llm → typed Insight
-jac run api.jac investigate "what happened"  # agentic by-llm walker
+jac run --no-serve api.jac ingest sales data/synth_ecom.csv
+jac run --no-serve api.jac metric sales revenue "gross_revenue - refunds" order_ts
+jac run --no-serve api.jac anomaly sales revenue 90     # pyod IForest
+jac run --no-serve api.jac forecast sales revenue 30    # statsmodels SARIMAX
+jac run --no-serve api.jac narrate sales revenue <run>  # by llm → typed Insight
+jac run --no-serve api.jac investigate "what happened"  # agentic by-llm walker
 
 # Full-stack dashboard (recharts time-series + forecast band + AI)
-jac start --dev main.jac                     # → http://localhost:8000
+jac run --dev main.jac                                  # → http://localhost:8000
 ```
 
 Every command and output in the walkthrough was captured from the running app.
