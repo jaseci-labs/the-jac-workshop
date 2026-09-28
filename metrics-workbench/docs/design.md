@@ -64,8 +64,8 @@ the walker catalog; the OSP features specifically exercised:
 | Typed `node` declarations | `Dataset`, `Metric`, `AnalysisRun`, `Insight` |
 | Typed `edge` with declared endpoints | `Derives`, `AnalyzedBy`, `NarratedBy` — endpoints let outgoing traversals infer the target type without `[?:Type]` postfilters |
 | `has` fields on both nodes and edges | Edges carry provenance metadata (expression, kind, run_at, model) that `edge-filter` traversals can predicate on |
-| Persistence off `root` | No database code; nodes reachable from root persist under SQLite locally, MongoDB under `--scale` |
-| Per-user graph isolation | Under `jac start`, each analyst's workbench is invisible to others; the same code that runs locally serves multi-user without changes |
+| Persistence off `root` | No database code; nodes reachable from root persist in an embedded Postgres locally, a managed Postgres (`jac scale deploy`) at scale |
+| Per-user graph isolation | Under `jac run` (with `:protect` walkers), each analyst's workbench is invisible to others; the same code that runs locally serves multi-user without changes |
 | `visit [-->]` for nested recursion | `workspace_summary` and `export_lineage` traverse the whole DAG without manual loops |
 | `here` and `self` | Every walker ability uses `here` for the current node and `self` for walker state |
 | `report` and typed `has reports` | All walkers return typed structured data; the CLI serializes with `--json` |
@@ -249,13 +249,13 @@ metrics forecast --metric revenue --horizon 30d --seasonality weekly
 metrics narrate --run 12
 ```
 
-`jac nacompile` produces a single native binary. No Python interpreter needed
+`jac build --native` produces a single native binary. No Python interpreter needed
 on the user's machine.
 
 ### 6.2 Fullstack Web
 
 ```bash
-jac start --client web
+jac run main.jac          # web-app kind: serves the API + dashboard
 ```
 
 Multi-user analyst workbench. Per-user graph isolation is automatic; the
@@ -264,8 +264,9 @@ Multi-user analyst workbench. Per-user graph isolation is automatic; the
 ### 6.3 Desktop
 
 ```bash
-jac build --client desktop
-jac start --client desktop
+# jac.toml: [project] kind = "desktop"
+jac build
+jac run
 ```
 
 The same UI wrapped in an OS webview (WebKitGTK / WKWebView / WebView2). One
@@ -368,6 +369,8 @@ These need answers before implementation begins:
 
 - **Storage backend for persistence** — SQLite (default), or MongoDB for the
   demo? See `run-modes` in the lake.
+  *Resolved by the toolchain:* as of jac 0.36 Postgres is the only engine —
+  embedded locally, managed at scale.
 - **Auth provider** — what does the workshop demo use for the fullstack path?
 - **LLM provider config** — `by llm` needs a configured model; do we assume
   OpenAI, Anthropic, or a local model for the workshop machines?

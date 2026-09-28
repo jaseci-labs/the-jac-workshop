@@ -7,11 +7,11 @@ reactive state; `chart_data` shapes the series for recharts.
 impl app.do_auth -> None {
     authbusy = True;
     autherr = "";
-    sr: dict | None = None;   # jacSignup returns a dict
+    sr: SignupResult | None = None;   # jacSignup returns a SignupResult
     ok: bool = False;         # jacLogin returns a bool
     if authmode == "signup" {
         sr = await jacSignup(email, password);
-        if not sr["success"] {
+        if not sr.success {
             autherr = "Sign-up failed (the email may already be in use)";
             authbusy = False;
             return;
@@ -75,10 +75,10 @@ impl app.do_narrate -> None {
     busy = False;
 }
 
-impl app.chart_data -> list {
-    out = [];
+impl app.chart_data -> list[dict[str, int | float]] {
+    out: list[dict[str, int | float]] = [];
     for (i, v) in enumerate(points) {
-        row = {"i": i, "orders": v};
+        row: dict[str, int | float] = {"i": i, "orders": v};
         if i in anomalies {
             row["anomaly"] = v;
         }

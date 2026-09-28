@@ -7,11 +7,11 @@ pyod / statsmodels and reports client-ready dicts.
 impl app.do_auth -> None {
     authbusy = True;
     autherr = "";
-    sr: dict | None = None;   # jacSignup returns a dict
+    sr: SignupResult | None = None;   # jacSignup returns a SignupResult
     ok: bool = False;         # jacLogin returns a bool
     if authmode == "signup" {
         sr = await jacSignup(email, password);
-        if not sr["success"] {
+        if not sr.success {
             autherr = "Sign-up failed (the email may already be in use)";
             authbusy = False;
             return;

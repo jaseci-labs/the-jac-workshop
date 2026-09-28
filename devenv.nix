@@ -26,7 +26,7 @@ in
     # whose C-extension wheels (`.cpython-314t.so`) can't be loaded by jac's
     # embedded runtime. Seeding each project's `.jac/venv` with THIS Python
     # produces matching wheels, so numpy/pandas/pyod import cleanly under
-    # `jac start`.
+    # `jac run`.
     pkgs.python314
 
     pkgs.git

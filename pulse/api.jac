@@ -7,9 +7,9 @@ The heavy Python-interop story (pyod / statsmodels) lives in the sibling
 `metrics-workbench` capstone. Pulse is the slim live-build that fans out to
 every build target with a near-zero diff:
 
-    jac enter src/main.jac seed            # CLI subcommand (batteries-included)
-    jac enter src/main.jac scan --series orders
-    jac start src/main.jac                 # every walker -> POST /walker/<Name>
+    jac run --no-serve --entry seed main.jac          # CLI entrypoint (batteries-included)
+    jac run --no-serve --entry scan main.jac orders
+    jac run main.jac                                  # every :pub/:protect walker -> POST /walker/<name>
 """
 
 # Python interop, the first-class way: import a library DIRECTLY into this .jac
@@ -56,13 +56,14 @@ node Insight {
 # ---------------------------------------------------------------------------
 # AI as a language primitive: the signature IS the prompt. Inputs and the
 # returned InsightText are Jac types, not strings we template and re-parse.
-# The model is configured in jac.toml ([plugins.byllm.model]).
+# The model is configured in jac.toml ([byllm.model]).
 # ---------------------------------------------------------------------------
 def write_insight(series_name: str, anomaly_count: int, flagged_values: list[float]) -> InsightText by llm();
 
 # The z-score detector, in ONE place (pure Jac - no pandas, no pyod). `scan`
 # (CLI), `dashboard` (web display) and `narrate` all share it, so the detection
-# logic lives once. `_`-prefixed, so it stays a helper and never hits the API.
+# logic lives once. A plain `def` (no `:pub`), so it stays a private helper and
+# never hits the API.
 # Returns the flagged indices and their values.
 def _detect(points: list[float], threshold: float) -> tuple[list[int], list[float]] {
     n = len(points);
@@ -85,13 +86,13 @@ def _detect(points: list[float], threshold: float) -> tuple[list[int], list[floa
 
 # A readable timestamp for run history. `datetime` is a Python stdlib module
 # imported straight into Jac - the same interop move as `statistics` above.
-def _now() -> str {
+def _now -> str {
     return datetime.now().strftime("%b %d · %H:%M:%S");
 }
 
 # ---------------------------------------------------------------------------
 # Walkers - one surface, every target:
-#   * CLI subcommand   -> jac enter src/main.jac scan --series orders
+#   * CLI entrypoint   -> jac run --no-serve --entry scan main.jac orders
 #   * REST endpoint    -> POST /walker/scan   (via :pub, per-user root)
 #   * frontend RPC     -> root() spawn scan(series="orders")
 # ---------------------------------------------------------------------------
@@ -105,7 +106,7 @@ walker:pub seed {
 
     can run with Root entry {
         vals: list[float] = [];
-        # coerce: `jac enter` hands CLI args in as strings (int() is a no-op
+        # coerce: `jac run --entry` hands CLI args in as strings (int() is a no-op
         # on the REST/spawn path where the body is already typed).
         for i in range(int(self.n)) {
             base = 200.0 + float(i);
@@ -125,7 +126,7 @@ walker:pub seed {
 
 walker:pub list_series {
     can run with Root entry {
-        out: list[dict] = [];
+        out: list[dict[str, str | int]] = [];
         for s in [-->][?:Series] {
             out.append({"name": s.name, "points": len(s.points)});
         }
@@ -271,7 +272,7 @@ walker:protect run_history {
         }
         s = smatches[0];
         rns: list[Run] = [s -->][?:Run];        # typed, so the report schema resolves
-        out: list[dict] = [];
+        out: list[dict[str, str | int]] = [];
         for r in rns {
             ins_list: list[Insight] = [r -->][?:Insight];
             summary = ins_list[-1].summary if ins_list else "";

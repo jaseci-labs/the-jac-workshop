@@ -3,7 +3,7 @@
 A slim metric-anomaly narrator, **Jac-first**. The graph model, the z-score
 anomaly scan (pure Jac), the `forecast`, and the LLM narration all live in
 [api.jac](api.jac); [main.jac](main.jac) is the full-stack entry that mounts the
-browser UI ([web.cl.jac](web.cl.jac)).
+browser UI ([web.jac](web.jac)).
 
 It also shows **Python interop the first-class way**: `forecast` does
 `import from statistics { linear_regression }` at the top of the `.jac` file and
@@ -27,20 +27,22 @@ root ──▶ Series ──▶ Run ──▶ Insight
 |---|---|
 | `api.jac` | the walkers (`seed`, `scan`, `forecast`, `narrate`, `series_points`) + `by llm` |
 | `main.jac` | full-stack entry: imports the walkers, mounts the client |
-| `web.cl.jac` / `web.impl.jac` | the browser dashboard (compiled to React) |
+| `web.jac` / `web.impl.jac` | the browser dashboard (compiled to React — client placement is inferred from the JSX) |
 
 ## Try it — CLI (zero extra code)
 
 ```bash
 jac install
-jac enter main.jac seed                # generate a synthetic series in Jac
-jac enter main.jac scan orders         # z-score (pure Jac) → {'anomalies': 4, 'indices': [30, 31, 32, 55]}
-jac enter main.jac forecast orders 14  # linear_regression imported inline (interop)
-jac enter main.jac narrate orders      # by llm → a typed Insight
+jac run --no-serve --entry seed main.jac                # generate a synthetic series in Jac
+jac run --no-serve --entry scan main.jac orders         # z-score (pure Jac) → {'anomalies': 4, 'indices': [30, 31, 32, 55]}
+jac run --no-serve --entry forecast main.jac orders 14  # linear_regression imported inline (interop)
+jac run --no-serve --entry narrate main.jac orders      # by llm → a typed Insight
 ```
 
-> CLI args are **positional and arrive as strings** (`scan orders 3.0`, not
-> `--threshold 3.0`). Numeric fields are coerced in the walker.
+> `--no-serve` is needed because Pulse is a `web-app` project, so a bare
+> `jac run` serves it. CLI args are **positional and arrive as strings**
+> (`scan main.jac orders 3.0`, not `--threshold 3.0`). Numeric fields are
+> coerced in the walker.
 
 The graph **persists across calls** — `seed` then `scan` in separate invocations
 works because everything hangs off `root`. That's the native-DB story, visible
@@ -49,19 +51,26 @@ from the CLI with no server.
 ## Try it — full-stack web (same walkers, +1 file)
 
 ```bash
-jac start --dev main.jac               # → http://localhost:8000
+jac run --dev main.jac                 # → http://localhost:8000
 ```
 
-The `.cl.jac` page calls the same walkers with `root spawn` — no fetch, no CORS.
+The `web.jac` page calls the same walkers with `root spawn` — no fetch, no CORS.
 Click **Narrate** and the LLM writes a typed `Insight` right in the browser.
 
 ## Ship it (same source)
 
 ```bash
-jac bundle                             # → dist/pulse-0.1.0-py3-none-any.whl (pip-installable, runtime vendored)
-jac build --client pwa main.jac        # installable PWA: manifest + service worker + install banner
-jac build --client desktop main.jac    # native OS webview (no Electron); native host builds with a C toolchain
+jac build --as wheel                   # → dist/pulse-0.1.0-py3-none-any.whl (pip-installable, runtime vendored)
+jac build                              # → dist/pulse.jab, a sealed app bundle: `jac run pulse.jab`
 ```
+
+The client target is picked by `jac.toml`, not a flag:
+
+- **PWA** — add a `[client.pwa]` table (it needs at least one key, e.g.
+  `theme_color = "#ff6a3d"`), then `jac setup && jac build --as client` →
+  manifest + service worker + install banner in `.jac/client/dist/`.
+- **Desktop** — set `kind = "desktop"` under `[project]`, then `jac build` →
+  a native OS-webview app (no Electron) in `.jac/client/desktop/`.
 
 ## Config
 
